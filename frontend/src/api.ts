@@ -25,10 +25,16 @@ async function parse<T>(res: Response): Promise<T> {
 
 const join = (base: string, path: string) => base.replace(/\/+$/, '') + path
 
-function postJson<T>(baseUrl: string, path: string, body: unknown, signal?: AbortSignal) {
+function postJson<T>(
+  baseUrl: string,
+  path: string,
+  body: unknown,
+  signal?: AbortSignal,
+  extraHeaders: Record<string, string> = {},
+) {
   return fetch(join(baseUrl, path), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...extraHeaders },
     body: JSON.stringify(body),
     signal,
   }).then((res) => parse<T>(res))
@@ -38,7 +44,11 @@ export async function health(baseUrl: string): Promise<HealthResponse> {
   return parse(await fetch(join(baseUrl, '/api/health')))
 }
 
-/** PDF を段落と用語集にする（数秒） */
+/** 画面で入力した Gemini のキーをヘッダーで送る（空ならサーバーの環境変数のキーを使う） */
+const geminiHeaders = (key: string): Record<string, string> =>
+  key ? { 'X-Gemini-Api-Key': key } : {}
+
+/** PDF を段落（ページ番号・位置つき）にする（数秒） */
 export async function prepare(
   baseUrl: string,
   file: File,
@@ -62,11 +72,16 @@ export function translateParagraph(
 export function summarize(
   baseUrl: string,
   req: SummarizeRequest,
+  geminiKey: string,
   signal?: AbortSignal,
 ): Promise<SummarizeResponse> {
-  return postJson(baseUrl, '/api/summarize', req, signal)
+  return postJson(baseUrl, '/api/summarize', req, signal, geminiHeaders(geminiKey))
 }
 
-export function explainTerm(baseUrl: string, req: ExplainRequest): Promise<ExplainResponse> {
-  return postJson(baseUrl, '/api/explain', req)
+export function explainTerm(
+  baseUrl: string,
+  req: ExplainRequest,
+  geminiKey: string,
+): Promise<ExplainResponse> {
+  return postJson(baseUrl, '/api/explain', req, undefined, geminiHeaders(geminiKey))
 }

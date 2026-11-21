@@ -26,6 +26,24 @@ function loadApiUrl(): string {
   }
 }
 
+function loadGeminiKey(): string {
+  try {
+    return localStorage.getItem('geminiApiKey') ?? ''
+  } catch {
+    return ''
+  }
+}
+
+/** Gemini のキーはこのブラウザにだけ保存する（リポジトリやサーバーには保存しない） */
+function saveGeminiKey(key: string) {
+  try {
+    if (key) localStorage.setItem('geminiApiKey', key)
+    else localStorage.removeItem('geminiApiKey')
+  } catch {
+    // 保存できなくても、この画面を開いている間は使える
+  }
+}
+
 function saveApiUrl(url: string) {
   try {
     localStorage.setItem('apiUrl', url)
@@ -37,6 +55,7 @@ function saveApiUrl(url: string) {
 export default function App() {
   const [apiUrl, setApiUrl] = useState(loadApiUrl)
   const [apiStatus, setApiStatus] = useState('')
+  const [geminiKey, setGeminiKey] = useState(loadGeminiKey)
   const [file, setFile] = useState<File | null>(null)
   const [docFile, setDocFile] = useState<File | null>(null) // 表示中の PDF（翻訳開始時のファイル）
   const [lang, setLang] = useState(LANGUAGES[0].code)
@@ -100,6 +119,7 @@ export default function App() {
       summarize(
         apiUrl,
         { target_lang: prepared.target_lang, paragraphs: prepared.paragraphs.map((p) => p.source) },
+        geminiKey,
         controller.signal,
       )
         .then((res) => setSummary(res.summary))
@@ -154,7 +174,11 @@ export default function App() {
     setExplanation('説明を生成中…')
     try {
       const contexts = buildContexts(term, at, doc.paragraphs, translations)
-      const res = await explainTerm(apiUrl, { term, target_lang: doc.target_lang, contexts })
+      const res = await explainTerm(
+        apiUrl,
+        { term, target_lang: doc.target_lang, contexts },
+        geminiKey,
+      )
       setExplanation(res.explanation)
     } catch (e) {
       setExplanation(`説明を取得できませんでした: ${(e as Error).message}`)
@@ -172,6 +196,19 @@ export default function App() {
         </label>
         <button onClick={checkApi}>接続確認</button>
         <span className="status">{apiStatus}</span>
+        <label>
+          Gemini API キー
+          <input
+            type="password"
+            autoComplete="off"
+            placeholder="要約・用語説明に使う（空ならダミー）"
+            value={geminiKey}
+            onChange={(e) => {
+              setGeminiKey(e.target.value.trim())
+              saveGeminiKey(e.target.value.trim())
+            }}
+          />
+        </label>
       </header>
 
       <section className="controls">

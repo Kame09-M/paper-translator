@@ -16,10 +16,12 @@ SYSTEM = """あなたは学術論文の読解を助ける専門家です。
 - {lang} で、2〜4文で書く。前置きや見出しは書かない"""
 
 
-def explain_term(term: str, target_lang: str, contexts: list[str]) -> str:
-    if use_llm_mock():
+def explain_term(
+    term: str, target_lang: str, contexts: list[str], api_key: str | None = None
+) -> str:
+    if use_llm_mock(api_key):
         return f"（ダミー説明）「{term}」は本文中で {len(contexts)} 段落に出てくる語です。"
     system = SYSTEM.format(lang=LANG_NAMES.get(target_lang, target_lang))
     passages = "\n\n".join(f"段落{i + 1}:\n{c}" for i, c in enumerate(contexts)) or "（なし）"
     user = f"分からなかった語: {term}\n\nこの語が出てくる段落:\n{passages}"
-    return llm.generate(system, user, max_tokens=1024)
+    return llm.generate(system, user, max_tokens=1024, api_key=api_key)

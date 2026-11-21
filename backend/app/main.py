@@ -9,7 +9,9 @@
 
 from __future__ import annotations
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from typing import Optional
+
+from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import is_mock
@@ -68,12 +70,23 @@ def translate_paragraph(req: TranslateParagraphRequest) -> TranslateParagraphRes
     return TranslateParagraphResponse(translation=text)
 
 
+# 要約・用語説明の Gemini キーは、画面で入力したものをヘッダー X-Gemini-Api-Key で受け取る
+# （無ければサーバーの環境変数 GEMINI_API_KEY）。キーはログにも応答にも出さない
+# Python 3.9 の FastAPI は `str | None` を解釈できないので Optional を使う
+GeminiKeyHeader = Optional[str]  # noqa: UP045
+
+
 @app.post("/api/summarize", response_model=SummarizeResponse)
-def summarize_paper(req: SummarizeRequest) -> SummarizeResponse:
-    return SummarizeResponse(summary=summarize.summarize_paper(req.paragraphs, req.target_lang))
+def summarize_paper(
+    req: SummarizeRequest, x_gemini_api_key: GeminiKeyHeader = Header(default=None)
+) -> SummarizeResponse:
+    summary = summarize.summarize_paper(req.paragraphs, req.target_lang, api_key=x_gemini_api_key)
+    return SummarizeResponse(summary=summary)
 
 
 @app.post("/api/explain", response_model=ExplainResponse)
-def explain_term(req: ExplainRequest) -> ExplainResponse:
-    text = explain.explain_term(req.term, req.target_lang, req.contexts)
+def explain_term(
+    req: ExplainRequest, x_gemini_api_key: GeminiKeyHeader = Header(default=None)
+) -> ExplainResponse:
+    text = explain.explain_term(req.term, req.target_lang, req.contexts, api_key=x_gemini_api_key)
     return ExplainResponse(term=req.term, explanation=text)

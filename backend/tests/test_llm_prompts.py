@@ -11,7 +11,7 @@ from app.services import explain, llm, summarize
 def fake_llm(monkeypatch):
     calls = []
 
-    def fake_generate(system: str, user: str, max_tokens: int) -> str:
+    def fake_generate(system: str, user: str, max_tokens: int, api_key: str | None = None) -> str:
         calls.append({"system": system, "user": user})
         return "生成結果"
 
@@ -46,3 +46,20 @@ def test_mock_summary_has_all_headings(monkeypatch):
     out = summarize.summarize_paper(["A paragraph."], "ja")
     for heading in ["[研究背景]", "[研究目的]", "[方法]", "[結果]", "[考察]", "[結論]"]:
         assert heading in out
+
+
+def test_key_from_request_enables_llm_even_without_env(monkeypatch):
+    calls = []
+
+    def fake_generate(system, user, max_tokens, api_key=None):
+        calls.append(api_key)
+        return "本物"
+
+    monkeypatch.setattr(llm, "generate", fake_generate)
+    monkeypatch.setenv("MOCK", "0")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    # キーが無ければダミー、画面から渡されたキーがあれば本物を呼ぶ
+    assert "ダミー" in summarize.summarize_paper(["A paragraph."], "ja")
+    assert summarize.summarize_paper(["A paragraph."], "ja", api_key="from-ui") == "本物"
+    assert explain.explain_term("x", "ja", ["ctx"], api_key="from-ui") == "本物"
+    assert calls == ["from-ui", "from-ui"]

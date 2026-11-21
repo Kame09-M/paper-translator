@@ -7,7 +7,7 @@ select = ["E", "F", "I", "B", "UP"]
 
 [tool.ruff.lint.flake8-bugbear]
 # FastAPI の File(...) / Form(...) を引数デフォルトに書く定番パターンを許可
-extend-immutable-calls = ["fastapi.File", "fastapi.Form", "fastapi.Depends"]
+extend-immutable-calls = ["fastapi.File", "fastapi.Form", "fastapi.Header", "fastapi.Depends"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

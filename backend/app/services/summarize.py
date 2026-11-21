@@ -42,10 +42,11 @@ def _mock_summary(paragraphs: list[str]) -> str:
     return "\n".join(lines)
 
 
-def summarize_paper(paragraphs: list[str], target_lang: str) -> str:
+def summarize_paper(paragraphs: list[str], target_lang: str, api_key: str | None = None) -> str:
+    """api_key は画面から送られた Gemini のキー（無ければ環境変数のキーを使う）。"""
     if not paragraphs:
         return ""
-    if use_llm_mock():
+    if use_llm_mock(api_key):
         return _mock_summary(paragraphs)
     system = SYSTEM.format(lang=LANG_NAMES.get(target_lang, target_lang))
-    return llm.generate(system, "\n\n".join(paragraphs), max_tokens=4096)
+    return llm.generate(system, "\n\n".join(paragraphs), max_tokens=4096, api_key=api_key)

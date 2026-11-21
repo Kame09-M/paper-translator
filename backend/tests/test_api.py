@@ -77,3 +77,21 @@ def test_explain():
     )
     assert res.status_code == 200
     assert res.json()["term"] == "attention"
+
+
+def test_gemini_key_header_is_passed_to_services(monkeypatch):
+    from app.services import explain, summarize
+
+    seen = {}
+    monkeypatch.setattr(
+        summarize, "summarize_paper", lambda ps, lang, api_key=None: seen.setdefault("s", api_key)
+    )
+    monkeypatch.setattr(
+        explain, "explain_term", lambda t, lang, ctx, api_key=None: seen.setdefault("e", api_key)
+    )
+    headers = {"X-Gemini-Api-Key": "key-from-ui"}
+    client.post("/api/summarize", json={"target_lang": "ja", "paragraphs": ["a"]}, headers=headers)
+    client.post(
+        "/api/explain", json={"term": "t", "target_lang": "ja", "contexts": []}, headers=headers
+    )
+    assert seen == {"s": "key-from-ui", "e": "key-from-ui"}
