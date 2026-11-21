@@ -41,6 +41,14 @@ def _is_prose(text: str) -> bool:
     return not (EMAIL_RE.search(text) and len(words) < 15)
 
 
+def is_prose_block(raw: str) -> bool:
+    """改行つきのブロックが訳すべき文章か。短い行が4行以上並ぶものは表とみなす。"""
+    lines = [ln for ln in raw.strip().split("\n") if ln.strip()]
+    if len(lines) >= 4 and sum(len(ln) for ln in lines) / len(lines) < 30:
+        return False
+    return _is_prose(_join_lines(raw))
+
+
 def _join_lines(text: str) -> str:
     text = re.sub(r"-\n(\w)", r"\1", text)  # 行末ハイフンでの単語分割を戻す
     return re.sub(r"\s*\n\s*", " ", text).strip()
@@ -63,6 +71,39 @@ def _is_references_heading(raw: str) -> bool:
     return bool(REFERENCES_HEADING_RE.match(head))
 
 
+@dataclass
+class Block:
+    bbox: tuple[float, float, float, float]
+    raw: str  # 行ごとに改行で区切った文字列
+
+
+SENTENCE_END_RE = re.compile(r"[.!?:]\)?$")
+
+
+def merge_split_blocks(blocks: list[Block]) -> list[Block]:
+    """途中で2つに分かれた段落をつなげる（PyMuPDF の版によって段落が途中で分かれるため）。
+
+    前のブロックが文末記号で終わらず、すぐ下（行の高さの半分以内）に横位置の重なるブロックが
+    続き、そのブロックが文章のときだけつなげる。見出しと本文、左右の列、表のキャプションと表はつなげない。
+    """
+    merged: list[Block] = []
+    for block in blocks:
+        prev = merged[-1] if merged else None
+        if prev and not SENTENCE_END_RE.search(prev.raw.strip()):
+            px0, py0, px1, py1 = prev.bbox
+            x0, y0, x1, y1 = block.bbox
+            line_height = (py1 - py0) / (prev.raw.strip().count("\n") + 1)
+            close_below = 0 <= y0 - py1 <= line_height / 2 and x0 < px1 and x1 > px0
+            if close_below and is_prose_block(block.raw):
+                merged[-1] = Block(
+                    bbox=(min(px0, x0), py0, max(px1, x1), max(py1, y1)),
+                    raw=f"{prev.raw.rstrip()}\n{block.raw}",
+                )
+                continue
+        merged.append(block)
+    return merged
+
+
 def extract_layout(pdf_bytes: bytes, min_chars: int = 40) -> tuple[list[Page], list[Paragraph]]:
     """ページの大きさと、訳す段落（テキスト・ページ番号・位置）を返す。
 
@@ -75,16 +116,17 @@ def extract_layout(pdf_bytes: bytes, min_chars: int = 40) -> tuple[list[Page], l
     paragraphs: list[Paragraph] = []
     for page_no, page in enumerate(doc):
         pages.append(Page(width=page.rect.width, height=page.rect.height))
-        for block in page.get_text("dict")["blocks"]:
-            if block["type"] != 0 or not block["lines"] or not _is_horizontal(block):
-                continue
-            raw = _block_text(block)
-            if _is_references_heading(raw):
+        blocks = [
+            Block(bbox=tuple(b["bbox"]), raw=_block_text(b))
+            for b in page.get_text("dict")["blocks"]
+            if b["type"] == 0 and b["lines"] and _is_horizontal(b)
+        ]
+        for block in merge_split_blocks(blocks):
+            if _is_references_heading(block.raw):
                 return pages + _remaining_pages(doc, page_no + 1), paragraphs
-            text = _join_lines(raw)
-            if len(text) >= min_chars and _is_prose(text):
-                x0, y0, x1, y1 = block["bbox"]
-                paragraphs.append(Paragraph(text=text, page=page_no, bbox=(x0, y0, x1, y1)))
+            text = _join_lines(block.raw)
+            if len(text) >= min_chars and is_prose_block(block.raw):
+                paragraphs.append(Paragraph(text=text, page=page_no, bbox=block.bbox))
     return pages, paragraphs
 
 
