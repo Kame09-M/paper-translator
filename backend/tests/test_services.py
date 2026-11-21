@@ -15,6 +15,26 @@ def test_split_paragraphs_joins_lines_and_hyphens():
     ]
 
 
+def test_split_paragraphs_without_blank_lines():
+    # pypdf の実際の出力の形（空行なし。段落の最終行は文末記号で終わり、短い）
+    full = "x" * 90
+    text = "\n".join(
+        [
+            "1 Introduction",
+            f"Recurrent neural networks {full}",
+            f"in particular, have been firmly established {full}",
+            "architectures [38, 24, 15].",
+            f"Recurrent models typically factor computation {full}",
+            "constraint of sequential computation, however, remains.",
+        ]
+    )
+    paras = pdf.split_paragraphs(text)
+    assert len(paras) == 2
+    assert "Recurrent neural networks" in paras[0]  # 見出しの扱いは TODO
+    assert paras[0].endswith("architectures [38, 24, 15].")
+    assert paras[1].endswith("however, remains.")
+
+
 def test_extract_terms_counts_and_filters_stopwords():
     paras = ["Attention and attention again.", "This attention uses embeddings and embeddings."]
     found = terms.extract_terms(paras)
