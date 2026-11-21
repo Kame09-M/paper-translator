@@ -35,6 +35,21 @@ def test_split_paragraphs_without_blank_lines():
     assert paras[1].endswith("however, remains.")
 
 
+def test_split_paragraphs_drops_references_and_after():
+    text = (
+        "The model works well on every task we tried.\n\n"
+        "References\n"
+        "[1] Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E Hinton. Layer normalization.\n\n"
+        "A Appendix: attention visualizations of the encoder layers."
+    )
+    assert pdf.split_paragraphs(text) == ["The model works well on every task we tried."]
+
+
+def test_split_paragraphs_keeps_references_word_inside_sentence():
+    text = "References to prior work are given in the related work section."
+    assert pdf.split_paragraphs(text) == [text]
+
+
 def test_extract_terms_counts_and_filters_stopwords():
     paras = ["Attention and attention again.", "This attention uses embeddings and embeddings."]
     found = terms.extract_terms(paras)

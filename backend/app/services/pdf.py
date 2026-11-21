@@ -13,6 +13,21 @@ def extract_text(pdf_bytes: bytes) -> str:
     return "\n".join(page.extract_text() or "" for page in reader.pages)
 
 
+# 参考文献の見出し行（「References」「7 References」「Bibliography」など、その語だけの行）
+REFERENCES_HEADING_RE = re.compile(
+    r"^\s*(\d+\.?\s*)?(references|bibliography)\s*$", re.IGNORECASE | re.MULTILINE
+)
+
+
+def strip_references(text: str) -> str:
+    """参考文献の見出し以降（参考文献リストと、その後ろの付録）を切り捨てる。
+
+    見出しが複数あれば最後のものを使う（本文中の同名の行で切りすぎないため）。
+    """
+    matches = list(REFERENCES_HEADING_RE.finditer(text))
+    return text[: matches[-1].start()] if matches else text
+
+
 SENTENCE_END_RE = re.compile(r"[.!?:]\)?(\s*\[[\d,\s\-–]+\])?$")
 
 
@@ -43,8 +58,9 @@ def _join_lines(lines: list[str]) -> str:
 def split_paragraphs(text: str, min_chars: int = 40) -> list[str]:
     """テキストを段落に分け、改行と行末ハイフンを整える。短すぎる断片（見出し等）は捨てる。
 
-    TODO: 図表キャプション・参考文献の扱い
+    参考文献の見出し以降は訳さないので捨てる。TODO: 図表キャプションの扱い
     """
+    text = strip_references(text)
     all_lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
     if not all_lines:
         return []
