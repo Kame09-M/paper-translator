@@ -52,6 +52,13 @@ def test_extract_layout_skips_tables_formulas_and_author_blocks():
     assert [p.text for p in paras] == [LONG_RIGHT]
 
 
+def test_is_prose_block_rejects_table_with_names():
+    # 人名が多い表は単語の割合では文章に見えるが、短い行が並ぶので表とみなす
+    table = "Parser\nTraining\nWSJ 23 F1\nVinyals & Kaiser el al.\nPetrov et al. (2006)\nWSJ only"
+    assert not pdf.is_prose_block(table)
+    assert pdf.is_prose_block("A normal paragraph line that is long enough\nand continues here.")
+
+
 def test_extract_layout_drops_references_and_after():
     data = _two_column_pdf(
         [
@@ -114,3 +121,33 @@ def test_build_glossary_drops_terms_left_untranslated(monkeypatch):
 
 def test_summarize_empty():
     assert summarize.summarize_paper([], "ja") == ""
+
+
+def test_merge_split_blocks_joins_paragraph_cut_mid_sentence():
+    # 新しい PyMuPDF は1つの段落を途中で2ブロックに分けることがある（行間 12pt の2行 + 1行）
+    blocks = [
+        pdf.Block(bbox=(124, 73, 488, 99), raw="Provided attribution,\nGoogle grants"),
+        pdf.Block(bbox=(270, 101, 340, 113), raw="scholarly works."),
+    ]
+    merged = pdf.merge_split_blocks(blocks)
+    assert merged == [
+        pdf.Block(
+            bbox=(124, 73, 488, 113),
+            raw="Provided attribution,\nGoogle grants\nscholarly works.",
+        )
+    ]
+
+
+def test_merge_split_blocks_keeps_separate_paragraphs():
+    blocks = [
+        pdf.Block(bbox=(108, 100, 504, 124), raw="First paragraph ends here.\nSecond line."),
+        pdf.Block(bbox=(108, 126, 504, 150), raw="Next paragraph starts.\nAnd continues."),
+        pdf.Block(bbox=(108, 170, 300, 180), raw="3.1 Encoder and Decoder Stacks"),  # 見出し
+        # 左の列の末尾（文の途中）と、右の列の先頭は横に重ならないのでつなげない
+        pdf.Block(bbox=(108, 190, 300, 214), raw="Left column ends in the\nmiddle of a"),
+        pdf.Block(bbox=(330, 215, 504, 239), raw="right column block\nstarts here."),
+        # 表のキャプションと、すぐ下の表本体はつなげない（訳で表を隠さないため）
+        pdf.Block(bbox=(108, 300, 504, 310), raw="Table 4: Results on Section 23 of WSJ (F1)"),
+        pdf.Block(bbox=(108, 312, 504, 400), raw="Parser Training WSJ 23 F1\n88.3 90.4 91.7 92.1"),
+    ]
+    assert pdf.merge_split_blocks(blocks) == blocks
