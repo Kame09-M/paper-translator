@@ -17,17 +17,10 @@ class PageSize(BaseModel):
     height: float
 
 
-class GlossaryEntry(BaseModel):
-    term: str
-    translation: str
-    paragraph_ids: list[int]  # 用語が出現する段落の id（用語説明の根拠に使う）
-
-
 class PrepareResponse(BaseModel):
     target_lang: str
     pages: list[PageSize]  # 全ページ（訳す段落がないページも含む）
     paragraphs: list[SourceParagraph]
-    glossary: list[GlossaryEntry]
 
 
 class HistoryPair(BaseModel):
@@ -38,7 +31,6 @@ class HistoryPair(BaseModel):
 class TranslateParagraphRequest(BaseModel):
     text: str
     target_lang: str
-    glossary: list[GlossaryEntry]
     history: list[HistoryPair] = []  # 直前の段落の原文と訳（訳語・文体をそろえるため）
 
 
@@ -52,13 +44,13 @@ class SummarizeRequest(BaseModel):
 
 
 class SummarizeResponse(BaseModel):
-    summary: str
+    summary: str  # [研究背景]〜[結論] の6項目。各項目は「- 」の箇条書き
 
 
 class ExplainRequest(BaseModel):
     term: str
     target_lang: str
-    contexts: list[str]  # 用語が出現する段落の原文
+    contexts: list[str]  # 選んだ語が出てくる段落（原文。訳があれば添える）
 
 
 class ExplainResponse(BaseModel):

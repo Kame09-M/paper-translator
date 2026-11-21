@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import PdfPages from './PdfPages'
 import { explainTerm, health, prepare, summarize, translateParagraph } from './api'
-import type { GlossaryEntry, PrepareResponse } from './types'
+import { buildContexts, paragraphAtSelection } from './selection'
+import type { PrepareResponse } from './types'
 
 // 翻訳先の候補。code は PLaMo 3 Translate の言語コード（モデルカードの Supported Languages。全53言語）
 const LANGUAGES = [
@@ -44,19 +45,20 @@ export default function App() {
   const [summary, setSummary] = useState('')
   const [stage, setStage] = useState<'idle' | 'preparing' | 'translating' | 'done'>('idle')
   const [error, setError] = useState('')
-  const [selected, setSelected] = useState<GlossaryEntry | null>(null)
+  // 選択中の語と「説明」ボタンの位置（画面座標）。説明パネルに出している語
+  const [selection, setSelection] = useState<{ term: string; at: number | null; x: number; y: number } | null>(null)
+  const [selected, setSelected] = useState<string | null>(null)
   const [explanation, setExplanation] = useState('')
   const abortRef = useRef<AbortController | null>(null)
 
-  const paragraphText = useMemo(
-    () => new Map(doc?.paragraphs.map((p) => [p.id, p.source]) ?? []),
-    [doc],
-  )
   const doneCount = translations.filter((t) => t !== null).length
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSelected(null)
+      if (e.key === 'Escape') {
+        setSelected(null)
+        setSelection(null)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -113,7 +115,6 @@ export default function App() {
           {
             text: p.source,
             target_lang: prepared.target_lang,
-            glossary: prepared.glossary,
             history: prev ? [prev] : [],
           },
           controller.signal,
@@ -130,13 +131,30 @@ export default function App() {
     }
   }
 
-  async function openTerm(g: GlossaryEntry) {
+  /** ページ上で文字を選んだら、その近くに「説明」ボタンを出す */
+  function onPagesMouseUp() {
     if (!doc) return
-    setSelected(g)
+    const sel = window.getSelection()
+    const term = sel?.toString().replace(/\s+/g, ' ').trim() ?? ''
+    if (!sel || sel.rangeCount === 0 || term.length === 0 || term.length > 80) {
+      setSelection(null)
+      return
+    }
+    const range = sel.getRangeAt(0)
+    const r = range.getBoundingClientRect()
+    setSelection({ term, at: paragraphAtSelection(range, doc.paragraphs), x: r.left, y: r.bottom + 6 })
+  }
+
+  async function explainSelection() {
+    if (!doc || !selection) return
+    const { term, at } = selection
+    setSelection(null)
+    window.getSelection()?.removeAllRanges()
+    setSelected(term)
     setExplanation('説明を生成中…')
     try {
-      const contexts = g.paragraph_ids.map((id) => paragraphText.get(id) ?? '')
-      const res = await explainTerm(apiUrl, { term: g.term, target_lang: doc.target_lang, contexts })
+      const contexts = buildContexts(term, at, doc.paragraphs, translations)
+      const res = await explainTerm(apiUrl, { term, target_lang: doc.target_lang, contexts })
       setExplanation(res.explanation)
     } catch (e) {
       setExplanation(`説明を取得できませんでした: ${(e as Error).message}`)
@@ -183,24 +201,36 @@ export default function App() {
 
       {doc && (
         <main className="result">
-          <details className="summary">
+          <details className="summary" open>
             <summary>要約{summary ? '' : '（生成中…）'}</summary>
-            <p>{summary || '要約を生成中…'}</p>
+            <p className="summary-text">{summary || '要約を生成中…'}</p>
           </details>
 
           <p className="hint">
-            左が原文、右が訳です。段落にマウスを乗せると、反対側の同じ段落が光ります。訳語をクリックすると説明が出ます。
+            左が原文、右が訳です。段落にマウスを乗せると、反対側の同じ段落が光ります。
+            分からない語を選択すると、その語のこの論文での意味を説明できます。
           </p>
 
           {docFile && (
-            <PdfPages
-              file={docFile}
-              pages={doc.pages}
-              paragraphs={doc.paragraphs}
-              translations={translations}
-              glossary={doc.glossary}
-              onTermClick={openTerm}
-            />
+            <div onMouseUp={onPagesMouseUp}>
+              <PdfPages
+                file={docFile}
+                pages={doc.pages}
+                paragraphs={doc.paragraphs}
+                translations={translations}
+              />
+            </div>
+          )}
+
+          {selection && (
+            <button
+              className="explain-button"
+              style={{ left: selection.x, top: selection.y }}
+              onMouseDown={(e) => e.preventDefault()} // 押した瞬間に選択が外れないように
+              onClick={explainSelection}
+            >
+              この用語のこの論文での意味を説明
+            </button>
           )}
 
           {selected && (
@@ -208,8 +238,7 @@ export default function App() {
               <button className="close" onClick={() => setSelected(null)} aria-label="閉じる">
                 ×
               </button>
-              <h3>{selected.term}</h3>
-              <p className="term-translation">訳語: {selected.translation}</p>
+              <h3>{selected}</h3>
               <p>{explanation}</p>
             </aside>
           )}

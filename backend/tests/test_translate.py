@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from app.schemas import GlossaryEntry
 from app.services import translate
 
 
@@ -46,21 +45,17 @@ def _use_fake(monkeypatch):
     return tok
 
 
-def test_translate_paragraphs_passes_glossary_and_history(monkeypatch):
+def test_translate_paragraphs_passes_history_without_glossary(monkeypatch):
     tok = _use_fake(monkeypatch)
-    glossary = [
-        GlossaryEntry(term="attention", translation="注意機構", paragraph_ids=[0, 1]),
-        GlossaryEntry(term="encoder", translation="エンコーダ", paragraph_ids=[1]),
-    ]
     out = translate.translate_paragraphs(
-        ["Attention is all you need.", "The encoder uses attention."], "ja", glossary
+        ["Attention is all you need.", "The encoder uses attention."], "ja"
     )
 
     assert out == ["訳1", "訳2"]
     first, second = tok.calls
-    # 1段落目: 履歴なし、その段落に出る用語だけ
+    # 1段落目: 履歴なし。用語集は渡さない
     assert first["messages"] == [{"role": "user", "content": "Attention is all you need."}]
-    assert first["glossary"] == [{"source": "attention", "target": "注意機構"}]
+    assert "glossary" not in first
     assert first["target_lang"] == "ja"
     # 2段落目: 直前の段落の原文と訳が履歴に入る
     assert second["messages"] == [
@@ -68,11 +63,3 @@ def test_translate_paragraphs_passes_glossary_and_history(monkeypatch):
         {"role": "assistant", "content": "訳1"},
         {"role": "user", "content": "The encoder uses attention."},
     ]
-    assert {g["source"] for g in second["glossary"]} == {"attention", "encoder"}
-
-
-def test_glossary_omitted_when_no_term_appears(monkeypatch):
-    tok = _use_fake(monkeypatch)
-    glossary = [GlossaryEntry(term="decoder", translation="デコーダ", paragraph_ids=[])]
-    translate.translate_paragraph("Nothing relevant here.", "ja", glossary)
-    assert "glossary" not in tok.calls[0]
