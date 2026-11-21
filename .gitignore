@@ -1,0 +1,37 @@
+# 秘密情報
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# 論文PDF・モデル重み（公開リポジトリには入れない）
+*.pdf
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.gguf
+models/
+hf_cache/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / エディタ
+.DS_Store
+.vscode/
+.idea/
