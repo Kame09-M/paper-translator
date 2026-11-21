@@ -16,6 +16,7 @@ from app.schemas import (
     ExplainRequest,
     ExplainResponse,
     HealthResponse,
+    PageSize,
     PrepareResponse,
     SourceParagraph,
     SummarizeRequest,
@@ -40,7 +41,7 @@ def health() -> HealthResponse:
 async def prepare(file: UploadFile = File(...), target_lang: str = Form("ja")) -> PrepareResponse:
     data = await file.read()
     try:
-        paragraphs = pdf.extract_paragraphs(data)
+        pages, paragraphs = pdf.extract_layout(data)
     except Exception as e:  # 壊れたPDFなど
         raise HTTPException(status_code=400, detail=f"PDF を読めませんでした: {e}") from e
     if not paragraphs:
@@ -48,8 +49,12 @@ async def prepare(file: UploadFile = File(...), target_lang: str = Form("ja")) -
 
     return PrepareResponse(
         target_lang=target_lang,
-        paragraphs=[SourceParagraph(id=i, source=s) for i, s in enumerate(paragraphs)],
-        glossary=terms.build_glossary(paragraphs, target_lang),
+        pages=[PageSize(width=p.width, height=p.height) for p in pages],
+        paragraphs=[
+            SourceParagraph(id=i, source=p.text, page=p.page, bbox=list(p.bbox))
+            for i, p in enumerate(paragraphs)
+        ],
+        glossary=terms.build_glossary([p.text for p in paragraphs], target_lang),
     )
 
 

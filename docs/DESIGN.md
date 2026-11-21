@@ -5,7 +5,7 @@
 ## 処理の流れ
 
 ```
-PDF ──pdf.py──▶ 段落リスト
+PDF ──pdf.py──▶ 段落リスト（ページ番号・位置つき）
                ├─terms.py──▶ 用語集（用語・訳語・出現段落id）
                ├─translate.py（その段落に出る用語＋直前の段落の原文と訳を渡す）──▶ 段落ごとの訳
                └─summarize.py（5段落ずつ要約 → 統合）──▶ 全体要約
@@ -37,12 +37,15 @@ cloudflared の接続が切れる（約100秒）ため。1回を短くし、訳�
 | メソッド | パス | 入力 | 出力 | 時間の目安 |
 |---|---|---|---|---|
 | GET | `/api/health` | なし | `{status, mock}` | |
-| POST | `/api/prepare` | multipart: `file`（PDF）, `target_lang`（言語コード、既定 `ja`） | `{target_lang, paragraphs[], glossary[]}` | 数秒 |
+| POST | `/api/prepare` | multipart: `file`（PDF）, `target_lang`（言語コード、既定 `ja`） | `{target_lang, pages[], paragraphs[], glossary[]}` | 数秒 |
 | POST | `/api/translate-paragraph` | JSON: `{text, target_lang, glossary[], history[]}` | `{translation}` | 約10秒 |
 | POST | `/api/summarize` | JSON: `{target_lang, paragraphs[]}`（原文） | `{summary}` | LLM API 次第 |
 | POST | `/api/explain` | JSON: `{term, target_lang, contexts[]}` | `{term, explanation}` | LLM API 次第 |
 
-- `paragraphs[]`（prepare の出力）: `{id, source}`
+- `pages[]`（prepare の出力）: `{width, height}`（pt）。全ページ分
+- `paragraphs[]`（prepare の出力）: `{id, source, page, bbox}`。`bbox` は `[x0, y0, x1, y1]`（pt、ページ左上が原点）
+- 段落は PyMuPDF のテキストブロック。訳すのは文章のブロックだけ（見出し・表・数式・著者欄・References 以降は含めない）
+- 画面は元の PDF を pdf.js で描き、段落の位置に訳を重ねる（図・表・数式は原文ページのまま残る）
 - `glossary[]`: `{term, translation, paragraph_ids[]}`
 - `history[]`: `{source, translation}`。直前の段落の原文と訳。画面が前の段落の結果を入れて送る
 - 画面の流れ: prepare → summarize を並行で開始 → translate-paragraph を段落順に呼ぶ
@@ -53,7 +56,7 @@ cloudflared の接続が切れる（約100秒）ため。1回を短くし、訳�
 
 | ファイル | 担当 | 本番で差し替える関数 |
 |---|---|---|
-| `services/pdf.py` | 寺田 | `split_paragraphs`（見出し・参考文献の扱い） |
+| `services/pdf.py` | 寺田 | `extract_layout`（段落の位置・訳す範囲の判定） |
 | `services/terms.py` | 寺田 | 訳語は最初の出現段落を文脈にして翻訳モデルで決める。必要なら `extract_terms` を KeyBERT に |
 | `services/translate.py` | 寺田 | `translate_paragraph`（PLaMo 3 Translate） |
 | `services/explain.py` | 市川 | `explain_term`（LLM API） |
