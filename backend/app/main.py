@@ -9,10 +9,13 @@
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.config import is_mock
 from app.schemas import (
@@ -90,3 +93,21 @@ def explain_term(
 ) -> ExplainResponse:
     text = explain.explain_term(req.term, req.target_lang, req.contexts, api_key=x_gemini_api_key)
     return ExplainResponse(term=req.term, explanation=text)
+
+
+def mount_frontend(target: FastAPI, dist: Path) -> bool:
+    """ビルド済みの画面（frontend/dist）があれば "/" で配信する。API ルートより後に呼ぶこと。
+
+    Colab から画面も一緒に配信すると、画面と API が同じ URL になり、API URL を手で入れなくてよい。
+    dist が無ければ何もしない（手元の開発では Vite の dev サーバーで画面を出す）。
+    """
+    if not (dist / "index.html").is_file():
+        return False
+    target.mount("/", StaticFiles(directory=dist, html=True), name="frontend")
+    return True
+
+
+FRONTEND_DIST = Path(
+    os.environ.get("FRONTEND_DIST", Path(__file__).resolve().parents[2] / "frontend" / "dist")
+)
+mount_frontend(app, FRONTEND_DIST)

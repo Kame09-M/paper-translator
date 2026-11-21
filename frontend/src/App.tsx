@@ -16,7 +16,9 @@ const LANGUAGES = [
   { code: 'es', label: 'スペイン語' },
 ]
 
-const DEFAULT_API = 'http://localhost:8000'
+// 開発中（Vite の dev サーバー）は手元の API。ビルドして Colab から配信したときは、
+// 画面を配信しているサーバー自身が API なので、そのオリジンを使う（URL を手で入れなくてよい）
+const DEFAULT_API = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin
 
 function loadApiUrl(): string {
   try {

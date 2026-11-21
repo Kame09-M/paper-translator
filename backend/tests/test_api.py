@@ -95,3 +95,25 @@ def test_gemini_key_header_is_passed_to_services(monkeypatch):
         "/api/explain", json={"term": "t", "target_lang": "ja", "contexts": []}, headers=headers
     )
     assert seen == {"s": "key-from-ui", "e": "key-from-ui"}
+
+
+def test_mount_frontend_serves_index_and_keeps_api(tmp_path):
+    from fastapi import FastAPI
+
+    from app.main import health, mount_frontend
+
+    (tmp_path / "index.html").write_text("<p>app</p>")
+    test_app = FastAPI()
+    test_app.get("/api/health")(health)
+    assert mount_frontend(test_app, tmp_path) is True
+    c = TestClient(test_app)
+    assert c.get("/").text == "<p>app</p>"
+    assert c.get("/api/health").json()["status"] == "ok"
+
+
+def test_mount_frontend_skips_missing_dist(tmp_path):
+    from fastapi import FastAPI
+
+    from app.main import mount_frontend
+
+    assert mount_frontend(FastAPI(), tmp_path / "no-such-dir") is False

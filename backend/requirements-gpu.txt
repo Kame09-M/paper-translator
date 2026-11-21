@@ -5,3 +5,5 @@
 transformers
 accelerate
 numba
+# Colab で画面（frontend）をビルドする Node.js。pdf.js が Node 22.13 以上を要求する
+nodejs-wheel>=22.13
