@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import PdfPages from './PdfPages'
 import { explainTerm, health, prepare, summarize, translateParagraph } from './api'
 import type { GlossaryEntry, PrepareResponse } from './types'
 
@@ -32,51 +33,11 @@ function saveApiUrl(url: string) {
   }
 }
 
-function escapeRegExp(s: string) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-/** 本文中の語から用語集の項目を引く（複数形 -s / -es も同じ用語として扱う。バックエンドと同じ規則） */
-function lookupTerm(word: string, byTerm: Map<string, GlossaryEntry>) {
-  const w = word.toLowerCase()
-  return byTerm.get(w) ?? byTerm.get(w.replace(/es$/, '')) ?? byTerm.get(w.replace(/s$/, ''))
-}
-
-/** 原文中の用語をクリック可能にする */
-function Highlighted({
-  text,
-  glossary,
-  onClick,
-}: {
-  text: string
-  glossary: GlossaryEntry[]
-  onClick: (g: GlossaryEntry) => void
-}) {
-  if (glossary.length === 0) return <>{text}</>
-  const byTerm = new Map(glossary.map((g) => [g.term.toLowerCase(), g]))
-  const alternatives = glossary.map((g) => escapeRegExp(g.term)).join('|')
-  const re = new RegExp(`\\b((?:${alternatives})(?:e?s)?)\\b`, 'gi')
-  const parts = text.split(re)
-  return (
-    <>
-      {parts.map((part, i) => {
-        const g = i % 2 === 1 ? lookupTerm(part, byTerm) : undefined
-        return g ? (
-          <button key={i} className="term" onClick={() => onClick(g)}>
-            {part}
-          </button>
-        ) : (
-          <span key={i}>{part}</span>
-        )
-      })}
-    </>
-  )
-}
-
 export default function App() {
   const [apiUrl, setApiUrl] = useState(loadApiUrl)
   const [apiStatus, setApiStatus] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  const [docFile, setDocFile] = useState<File | null>(null) // 表示中の PDF（翻訳開始時のファイル）
   const [lang, setLang] = useState(LANGUAGES[0].code)
   const [doc, setDoc] = useState<PrepareResponse | null>(null)
   const [translations, setTranslations] = useState<(string | null)[]>([])
@@ -92,6 +53,14 @@ export default function App() {
     [doc],
   )
   const doneCount = translations.filter((t) => t !== null).length
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelected(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   async function checkApi() {
     saveApiUrl(apiUrl)
@@ -120,6 +89,7 @@ export default function App() {
       // 1. 段落と用語集（数秒）
       const prepared = await prepare(apiUrl, file, lang)
       if (controller.signal.aborted) return
+      setDocFile(file)
       setDoc(prepared)
       setTranslations(prepared.paragraphs.map(() => null))
       setStage('translating')
@@ -213,23 +183,25 @@ export default function App() {
 
       {doc && (
         <main className="result">
-          <section className="summary">
-            <h2>要約</h2>
+          <details className="summary">
+            <summary>要約{summary ? '' : '（生成中…）'}</summary>
             <p>{summary || '要約を生成中…'}</p>
-          </section>
+          </details>
 
-          <section className="pairs">
-            {doc.paragraphs.map((p, i) => (
-              <div className="pair" key={p.id}>
-                <p className="source">
-                  <Highlighted text={p.source} glossary={doc.glossary} onClick={openTerm} />
-                </p>
-                <p className="translation">
-                  {translations[i] ?? <span className="pending">翻訳待ち…</span>}
-                </p>
-              </div>
-            ))}
-          </section>
+          <p className="hint">
+            左が原文、右が訳です。段落にマウスを乗せると、反対側の同じ段落が光ります。訳語をクリックすると説明が出ます。
+          </p>
+
+          {docFile && (
+            <PdfPages
+              file={docFile}
+              pages={doc.pages}
+              paragraphs={doc.paragraphs}
+              translations={translations}
+              glossary={doc.glossary}
+              onTermClick={openTerm}
+            />
+          )}
 
           {selected && (
             <aside className="term-panel">
