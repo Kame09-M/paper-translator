@@ -21,6 +21,7 @@
 - API の型は backend/app/schemas.py と frontend/src/types.ts を必ず同時に直す
 - 翻訳は PLaMo 3 Translate（既存モデル、学習はしない）。用語集は apply_chat_template の
   glossary 引数、文脈は context 引数で渡す。モデルカードに書かれていないことは推測せず、確認する
+- 言語は言語コード（ja, en など）で渡す。PLaMo の使い方は docs/DESIGN.md にまとめた（モデルカード確認済み）
 - 未確認事項: T4 での fp16 動作、transformers のバージョン、Gemini 無料枠の上限とモデル名
 - モデル重み・PDF・.env・APIキーはコミットしない（公開リポジトリ）
 - 担当外のファイルは勝手に変えない。変える必要があれば、理由を説明して止まる

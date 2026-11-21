@@ -8,7 +8,6 @@ from __future__ import annotations
 import re
 from collections import Counter
 
-from app.config import is_mock
 from app.schemas import GlossaryEntry
 
 # 最小限のストップワード。必要に応じて増やす
@@ -39,13 +38,13 @@ def find_occurrences(term: str, paragraphs: list[str]) -> list[int]:
 
 
 def decide_translations(terms: list[str], target_lang: str) -> dict[str, str]:
-    """各用語の訳語を決める。
+    """各用語の訳語を決める。今は翻訳モデルで用語単体を訳す（MOCK では 〈term〉）。
 
-    TODO(本番): 決め方を決める（翻訳モデルで用語単体を訳す / LLM に文脈付きで聞く など）
+    TODO: 単体だと多義語の訳がぶれる。必要なら出現段落を context に渡す
     """
-    if is_mock():
-        return {t: f"〈{t}〉" for t in terms}
-    raise NotImplementedError("訳語の決め方は未実装")
+    from app.services.translate import translate_text
+
+    return {t: translate_text(t, target_lang) for t in terms}
 
 
 def build_glossary(paragraphs: list[str], target_lang: str) -> list[GlossaryEntry]:

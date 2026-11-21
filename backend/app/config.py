@@ -11,3 +11,11 @@ def is_mock() -> bool:
 
 def gemini_api_key() -> str | None:
     return os.environ.get("GEMINI_API_KEY") or None
+
+
+def use_llm_mock() -> bool:
+    """用語説明・要約（LLM API）をダミーにするか。MOCK=1 か API キー未設定ならダミー。
+
+    翻訳（GPU）と LLM API を別々に本物へ切り替えられるようにするため。
+    """
+    return is_mock() or gemini_api_key() is None

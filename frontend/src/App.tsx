@@ -2,8 +2,17 @@ import { useMemo, useState } from 'react'
 import { explainTerm, health, translatePdf } from './api'
 import type { GlossaryEntry, TranslateResponse } from './types'
 
-// 翻訳先の候補。PLaMo 3 Translate の対応言語はモデルカードで確認して増やす
-const LANGUAGES = ['Japanese', 'English', 'Chinese', 'Korean']
+// 翻訳先の候補。code は PLaMo 3 Translate の言語コード（モデルカードの Supported Languages。全53言語）
+const LANGUAGES = [
+  { code: 'ja', label: '日本語' },
+  { code: 'en', label: '英語' },
+  { code: 'zh-hans', label: '中国語（簡体字）' },
+  { code: 'zh-hant', label: '中国語（繁体字）' },
+  { code: 'ko', label: '韓国語' },
+  { code: 'fr', label: 'フランス語' },
+  { code: 'de', label: 'ドイツ語' },
+  { code: 'es', label: 'スペイン語' },
+]
 
 const DEFAULT_API = 'http://localhost:8000'
 
@@ -61,7 +70,7 @@ export default function App() {
   const [apiUrl, setApiUrl] = useState(loadApiUrl)
   const [apiStatus, setApiStatus] = useState('')
   const [file, setFile] = useState<File | null>(null)
-  const [lang, setLang] = useState(LANGUAGES[0])
+  const [lang, setLang] = useState(LANGUAGES[0].code)
   const [result, setResult] = useState<TranslateResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -131,7 +140,9 @@ export default function App() {
         />
         <select value={lang} onChange={(e) => setLang(e.target.value)}>
           {LANGUAGES.map((l) => (
-            <option key={l}>{l}</option>
+            <option key={l.code} value={l.code}>
+              {l.label}
+            </option>
           ))}
         </select>
         <button onClick={run} disabled={!file || loading}>

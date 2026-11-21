@@ -49,4 +49,4 @@ def test_find_occurrences_is_word_bounded():
 
 
 def test_summarize_empty():
-    assert summarize.summarize_paper([], "Japanese") == ""
+    assert summarize.summarize_paper([], "ja") == ""

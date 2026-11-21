@@ -7,13 +7,25 @@
 ```
 PDF ──pdf.py──▶ 段落リスト
                ├─terms.py──▶ 用語集（用語・訳語・出現段落id）
-               ├─translate.py（用語集＋直前の段落を渡す）──▶ 段落ごとの訳
+               ├─translate.py（その段落に出る用語＋直前の段落の原文と訳を渡す）──▶ 段落ごとの訳
                └─summarize.py（5段落ずつ要約 → 統合）──▶ 全体要約
 
 用語クリック ──explain.py（出現段落の原文を根拠として渡す）──▶ 説明
 ```
 
-`MOCK=1` のときは翻訳・訳語・説明・要約がダミーになる。PDF 抽出と用語抽出（頻度カウント）は MOCK でも本物が動く。
+- `MOCK=1`: 翻訳・訳語・説明・要約がすべてダミー。PDF 抽出と用語抽出（頻度カウント）は MOCK でも本物が動く
+- `MOCK=0`: 翻訳と訳語が PLaMo 3 Translate になる（GPU 必須）。説明・要約は `GEMINI_API_KEY` があるときだけ本物（`config.use_llm_mock()`）
+
+## PLaMo 3 Translate の使い方（モデルカードで確認済み）
+
+- `apply_chat_template(messages, source_lang="en", target_lang="ja", glossary=..., context=...)`
+- 言語は言語コード（`ja`, `en`, `zh-hans` など全53言語。モデルカードの Supported Languages）
+- `glossary`: `[{"source": "attention", "target": "アテンション"}]`。その段落に出る用語だけ渡す
+- 前の段落は「履歴」として渡す（`user`=原文, `assistant`=訳）。訳語・文体がそろう。今は直前1段落
+- `context`: 文字列。今は未使用（論文タイトルなどを入れる余地あり）
+- 入力全体＋出力で 32,768 トークン以内
+- モデルは環境変数 `PLAMO_MODEL`（既定 `pfnet/plamo-3-translate-2b`）
+- ライセンス: PLaMo Community License（学術・非商用は無料、登録不要）
 
 ## API
 
@@ -22,7 +34,7 @@ PDF ──pdf.py──▶ 段落リスト
 | メソッド | パス | 入力 | 出力 |
 |---|---|---|---|
 | GET | `/api/health` | なし | `{status, mock}` |
-| POST | `/api/translate` | multipart: `file`（PDF）, `target_lang`（既定 `Japanese`） | `{target_lang, paragraphs[], glossary[], summary}` |
+| POST | `/api/translate` | multipart: `file`（PDF）, `target_lang`（言語コード、既定 `ja`） | `{target_lang, paragraphs[], glossary[], summary}` |
 | POST | `/api/explain` | JSON: `{term, target_lang, contexts[]}` | `{term, explanation}` |
 
 - `paragraphs[]`: `{id, source, translation}`
@@ -44,8 +56,9 @@ PDF ──pdf.py──▶ 段落リスト
 
 ## 未確認事項（推測で書かない）
 
-- PLaMo 3 Translate: `apply_chat_template` の `glossary` / `context` 引数の形式、対応言語の一覧と言語名の書き方
-- T4 での fp16 動作、transformers のバージョン
+- T4（BF16 非対応）での fp16 動作。モデルカードは BF16 対応 GPU（L4 / A100 など）前提
+- transformers のバージョン（モデルカードに指定なし。config.json の保存時は 4.57.1）
+- 1段落の訳にかかる時間（論文1本＝約100段落）
 - Gemini 無料枠の上限とモデル名
 
 ## 評価

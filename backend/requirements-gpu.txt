@@ -1,0 +1,7 @@
+# Colab(GPU) で本物の翻訳を動かすときに追加で入れる（torch は Colab に入っている）
+# モデルカード（pfnet/plamo-3-translate-*）の指定: pip install -U torch transformers accelerate numba
+# バージョン指定はモデルカードに無い。config.json の保存時 transformers は 4.57.1
+-r requirements.txt
+transformers
+accelerate
+numba

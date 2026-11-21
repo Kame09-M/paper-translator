@@ -26,7 +26,7 @@ def health() -> HealthResponse:
 
 @app.post("/api/translate", response_model=TranslateResponse)
 async def translate_pdf(
-    file: UploadFile = File(...), target_lang: str = Form("Japanese")
+    file: UploadFile = File(...), target_lang: str = Form("ja")
 ) -> TranslateResponse:
     data = await file.read()
     try:

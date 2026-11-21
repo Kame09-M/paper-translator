@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from app.config import is_mock
+from app.config import use_llm_mock
 
 
 def chunk(paragraphs: list[str], size: int = 5) -> list[list[str]]:
@@ -13,13 +13,13 @@ def chunk(paragraphs: list[str], size: int = 5) -> list[list[str]]:
 
 
 def summarize_chunk(paragraphs: list[str], target_lang: str) -> str:
-    if is_mock():
+    if use_llm_mock():
         return paragraphs[0][:80] + "…"
     raise NotImplementedError("LLM API による要約は未実装")
 
 
 def merge_summaries(summaries: list[str], target_lang: str) -> str:
-    if is_mock():
+    if use_llm_mock():
         return "（ダミー要約）" + " / ".join(summaries)
     raise NotImplementedError("LLM API による要約の統合は未実装")
 

@@ -17,11 +17,11 @@ def test_translate_pdf(sample_pdf):
     res = client.post(
         "/api/translate",
         files={"file": ("sample.pdf", sample_pdf, "application/pdf")},
-        data={"target_lang": "Japanese"},
+        data={"target_lang": "ja"},
     )
     assert res.status_code == 200, res.text
     body = res.json()
-    assert body["target_lang"] == "Japanese"
+    assert body["target_lang"] == "ja"
     assert len(body["paragraphs"]) == 1
     terms = {g["term"]: g for g in body["glossary"]}
     assert "attention" in terms
@@ -42,7 +42,7 @@ def test_translate_rejects_non_pdf():
 def test_explain():
     res = client.post(
         "/api/explain",
-        json={"term": "attention", "target_lang": "Japanese", "contexts": ["a", "b"]},
+        json={"term": "attention", "target_lang": "ja", "contexts": ["a", "b"]},
     )
     assert res.status_code == 200
     assert res.json()["term"] == "attention"

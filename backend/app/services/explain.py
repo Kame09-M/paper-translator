@@ -5,10 +5,10 @@
 
 from __future__ import annotations
 
-from app.config import is_mock
+from app.config import use_llm_mock
 
 
 def explain_term(term: str, target_lang: str, contexts: list[str]) -> str:
-    if is_mock():
+    if use_llm_mock():
         return f"（ダミー説明）「{term}」は本文中で {len(contexts)} 段落に出てくる用語です。"
     raise NotImplementedError("LLM API による用語説明は未実装")
