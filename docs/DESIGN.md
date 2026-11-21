@@ -41,6 +41,12 @@ PDF ──pdf.py──▶ 段落リスト（ページ番号・位置つき）
 - モデルは環境変数 `PLAMO_MODEL`（既定 `pfnet/plamo-3-translate-2b`）
 - ライセンス: PLaMo Community License（学術・非商用は無料、登録不要）
 
+## 配信（Colab）
+
+- Colab で画面をビルドし（`npm run build`、Node は `nodejs-wheel`）、FastAPI が `frontend/dist` を `/` で配信する（`main.mount_frontend`）
+- 画面と API が同じ URL になるので、ビルドした画面の API URL の既定値は `window.location.origin`。手元の dev サーバーでは `http://localhost:8000`
+- Gemini のキーは画面で入力し、ヘッダー `X-Gemini-Api-Key` で要約・説明のときだけ送る（無ければ環境変数 `GEMINI_API_KEY`）
+
 ## API
 
 型の正本は `backend/app/schemas.py` と `frontend/src/types.ts`。必ず同時に直す。

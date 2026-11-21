@@ -28,7 +28,9 @@ npm run dev
 
 ブラウザで表示された URL を開き、画面上部の「API URL」に `http://localhost:8000` を入れます。
 
-本番の翻訳モデルは Google Colab（GPU）で動かします。`notebooks/colab_server.ipynb` を参照してください。
+本番の翻訳モデルは Google Colab（GPU）で動かします。`notebooks/colab_server.ipynb` を上から実行し、
+最後に表示される「アプリを開く」のリンクを開けば使えます（画面も Colab から配信され、API URL は自動で入ります）。
+Gemini の API キーは画面上部の欄に入れます。
 
 ## テスト
 
