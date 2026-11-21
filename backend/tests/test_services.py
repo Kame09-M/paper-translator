@@ -3,51 +3,75 @@ from __future__ import annotations
 from app.services import pdf, summarize, terms
 
 
-def test_split_paragraphs_joins_lines_and_hyphens():
-    text = (
-        "This is a para-\ngraph that spans\nmultiple lines of text.\n\n"
-        "short\n\n"
-        "Another paragraph that is long enough to keep."
-    )
-    assert pdf.split_paragraphs(text) == [
-        "This is a paragraph that spans multiple lines of text.",
-        "Another paragraph that is long enough to keep.",
+def _two_column_pdf(pages: list[list[tuple[float, float, str]]]) -> bytes:
+    """(x, y, text) を各ページの指定位置に書いた PDF を作る（左上原点・pt）。"""
+    import fitz
+
+    doc = fitz.open()
+    for items in pages:
+        page = doc.new_page(width=612, height=792)
+        for x, y, text in items:
+            page.insert_textbox(fitz.Rect(x, y, x + 230, y + 200), text, fontsize=9)
+    return doc.tobytes()
+
+
+LONG_LEFT = (
+    "The left column paragraph talks about recurrent net-\nworks and their sequential nature."
+)
+LONG_RIGHT = "The right column paragraph explains why attention removes recurrence entirely."
+
+
+def test_extract_layout_splits_columns_with_page_and_bbox():
+    data = _two_column_pdf([[(50, 100, LONG_LEFT), (330, 100, LONG_RIGHT)]])
+    pages, paras = pdf.extract_layout(data)
+    assert pages == [pdf.Page(width=612, height=792)]
+    assert [p.text for p in paras] == [
+        "The left column paragraph talks about recurrent networks and their sequential nature.",
+        LONG_RIGHT,
     ]
+    left, right = paras
+    assert left.page == right.page == 0
+    assert left.bbox[2] < right.bbox[0]  # 左の列の右端 < 右の列の左端
+    assert 95 <= left.bbox[1] <= 115
 
 
-def test_split_paragraphs_without_blank_lines():
-    # pypdf の実際の出力の形（空行なし。段落の最終行は文末記号で終わり、短い）
-    full = "x" * 90
-    text = "\n".join(
+def test_extract_layout_skips_short_blocks():
+    data = _two_column_pdf([[(50, 80, "1 Introduction"), (50, 120, LONG_RIGHT)]])
+    _, paras = pdf.extract_layout(data)
+    assert [p.text for p in paras] == [LONG_RIGHT]
+
+
+def test_extract_layout_skips_tables_formulas_and_author_blocks():
+    table = "GNMT + RL [38] 24.6 39.92 2.3 · 1019 1.4 · 1020"
+    formula = "MultiHead(Q, K, V) = Concat(head1, ..., headh) WO"
+    author = "Ashish Vaswani Google Brain avaswani@google.com"
+    data = _two_column_pdf(
+        [[(50, 50, table), (50, 150, formula), (50, 250, author), (50, 350, LONG_RIGHT)]]
+    )
+    _, paras = pdf.extract_layout(data)
+    assert [p.text for p in paras] == [LONG_RIGHT]
+
+
+def test_extract_layout_drops_references_and_after():
+    data = _two_column_pdf(
         [
-            "1 Introduction",
-            f"Recurrent neural networks {full}",
-            f"in particular, have been firmly established {full}",
-            "architectures [38, 24, 15].",
-            f"Recurrent models typically factor computation {full}",
-            "constraint of sequential computation, however, remains.",
+            [(50, 100, LONG_RIGHT), (50, 300, "References\n[1] Jimmy Ba. Layer normalization.")],
+            [(50, 100, "Appendix: attention visualizations of the encoder layers.")],
         ]
     )
-    paras = pdf.split_paragraphs(text)
-    assert len(paras) == 2
-    assert "Recurrent neural networks" in paras[0]  # 見出しの扱いは TODO
-    assert paras[0].endswith("architectures [38, 24, 15].")
-    assert paras[1].endswith("however, remains.")
+    pages, paras = pdf.extract_layout(data)
+    assert len(pages) == 2
+    assert [p.text for p in paras] == [LONG_RIGHT]
 
 
-def test_split_paragraphs_drops_references_and_after():
-    text = (
-        "The model works well on every task we tried.\n\n"
-        "References\n"
-        "[1] Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E Hinton. Layer normalization.\n\n"
-        "A Appendix: attention visualizations of the encoder layers."
-    )
-    assert pdf.split_paragraphs(text) == ["The model works well on every task we tried."]
-
-
-def test_split_paragraphs_keeps_references_word_inside_sentence():
+def test_extract_layout_keeps_references_word_inside_sentence():
     text = "References to prior work are given in the related work section."
-    assert pdf.split_paragraphs(text) == [text]
+    _, paras = pdf.extract_layout(_two_column_pdf([[(50, 100, text)]]))
+    assert [p.text for p in paras] == [text]
+
+
+def test_extract_paragraphs_returns_texts():
+    assert pdf.extract_paragraphs(_two_column_pdf([[(50, 100, LONG_RIGHT)]])) == [LONG_RIGHT]
 
 
 def test_extract_terms_counts_and_filters_stopwords():

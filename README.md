@@ -50,10 +50,13 @@ cd frontend && npm run build && npm run lint
 - 翻訳: PLaMo 3 Translate（学習はせず、用語集と文脈をプロンプトで渡す）
 - 用語抽出: 頻度カウント / KeyBERT
 - 用語説明・要約: LLM API（Gemini など）
+- PDF の段落と位置の抽出: PyMuPDF（AGPL-3.0）
+- PDF の表示: pdf.js（Apache-2.0）。原文ページと、段落の位置に訳を重ねたページを並べる
 - フロントエンド: Vite + React + TypeScript
 - バックエンド: FastAPI（推論は Google Colab の GPU 上で実行し、cloudflared で公開）
 
 ## 限界
 
-- 数式・図表・レイアウトの保持は対象外
+- 図・表・数式・見出しは訳さず、原文ページのまま表示する
+- 訳文は段落の枠に収まるよう文字を小さくするため、長い段落では読みにくくなることがある
 - 用語説明と要約は LLM の出力のため、誤りを含む場合があります

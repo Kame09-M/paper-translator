@@ -24,6 +24,9 @@ def test_prepare_returns_paragraphs_and_glossary(sample_pdf):
     assert body["target_lang"] == "ja"
     assert len(body["paragraphs"]) == 1
     assert body["paragraphs"][0]["id"] == 0
+    assert body["paragraphs"][0]["page"] == 0
+    assert len(body["paragraphs"][0]["bbox"]) == 4
+    assert body["pages"] == [{"width": 612, "height": 792}]
     terms = {g["term"]: g for g in body["glossary"]}
     assert terms["attention"]["paragraph_ids"] == [0]
 

@@ -8,6 +8,13 @@ from pydantic import BaseModel
 class SourceParagraph(BaseModel):
     id: int
     source: str
+    page: int  # 0 始まりのページ番号
+    bbox: list[float]  # 段落の位置 [x0, y0, x1, y1]。単位は pt、ページの左上が原点
+
+
+class PageSize(BaseModel):
+    width: float  # pt
+    height: float
 
 
 class GlossaryEntry(BaseModel):
@@ -18,6 +25,7 @@ class GlossaryEntry(BaseModel):
 
 class PrepareResponse(BaseModel):
     target_lang: str
+    pages: list[PageSize]  # 全ページ（訳す段落がないページも含む）
     paragraphs: list[SourceParagraph]
     glossary: list[GlossaryEntry]
 

@@ -3,6 +3,13 @@
 export interface SourceParagraph {
   id: number
   source: string
+  page: number // 0 始まりのページ番号
+  bbox: [number, number, number, number] // 段落の位置 [x0, y0, x1, y1]。単位は pt、ページの左上が原点
+}
+
+export interface PageSize {
+  width: number // pt
+  height: number
 }
 
 export interface GlossaryEntry {
@@ -13,6 +20,7 @@ export interface GlossaryEntry {
 
 export interface PrepareResponse {
   target_lang: string
+  pages: PageSize[] // 全ページ（訳す段落がないページも含む）
   paragraphs: SourceParagraph[]
   glossary: GlossaryEntry[]
 }
