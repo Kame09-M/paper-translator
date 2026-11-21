@@ -7,7 +7,35 @@
 用語ごとの簡易説明と論文全体の要約を付けて読解を助ける Web アプリです。
 授業「Natural Language Processing with Deep Learning」（2026）の課題として作成しています。
 
-> 開発中です。セットアップ手順は実装に合わせて追記します。
+> 開発中です。
+
+## 動かし方（ローカル・MOCK）
+
+GPU も API キーもなしで、ダミー翻訳で画面まで動きます。
+
+```bash
+# バックエンド（Python 3.9 以上）
+cd backend
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+MOCK=1 uvicorn app.main:app --reload --port 8000
+
+# フロントエンド（別ターミナル、Node 20 以上）
+cd frontend
+npm install
+npm run dev
+```
+
+ブラウザで表示された URL を開き、画面上部の「API URL」に `http://localhost:8000` を入れます。
+
+本番の翻訳モデルは Google Colab（GPU）で動かします。`notebooks/colab_server.ipynb` を参照してください。
+
+## テスト
+
+```bash
+cd backend && pytest && ruff check .
+cd frontend && npm run build && npm run lint
+```
 
 ## 処理の流れ
 

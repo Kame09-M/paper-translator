@@ -1,0 +1,8 @@
+fastapi>=0.110,<1
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+pypdf>=4.2
+# 本番（MOCK=0）で必要。バージョンはモデルカードを確認してから固定する
+# transformers
+# torch
+# google-genai
