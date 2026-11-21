@@ -6,21 +6,35 @@
 
 ```
 PDF ──pdf.py──▶ 段落リスト（ページ番号・位置つき）
-               ├─terms.py──▶ 用語集（用語・訳語・出現段落id）
-               ├─translate.py（その段落に出る用語＋直前の段落の原文と訳を渡す）──▶ 段落ごとの訳
-               └─summarize.py（5段落ずつ要約 → 統合）──▶ 全体要約
+               ├─translate.py（直前の段落の原文と訳を履歴として渡す。用語集は使わない）──▶ 段落ごとの訳
+               └─summarize.py（論文全体を1回で Gemini に渡す）──▶ [研究背景]〜[結論] の要約
 
-用語クリック ──explain.py（出現段落の原文を根拠として渡す）──▶ 説明
+語を選択 →「この用語のこの論文での意味を説明」──explain.py（選んだ位置の段落＋その語を含む段落）──▶ 説明
 ```
 
-- `MOCK=1`: 翻訳・訳語・説明・要約がすべてダミー。PDF 抽出と用語抽出（頻度カウント）は MOCK でも本物が動く
-- `MOCK=0`: 翻訳と訳語が PLaMo 3 Translate になる（GPU 必須）。説明・要約は `GEMINI_API_KEY` があるときだけ本物（`config.use_llm_mock()`）
+- 2026-11-21 方針変更: 自動の用語集（頻度で用語を選び訳語を固定）は選ぶ語のセンスが悪かったのでやめた。
+  訳は素直に訳し、分からない語は読み手が選んで説明させる
+- `MOCK=1`: 翻訳・説明・要約がすべてダミー。PDF 抽出は MOCK でも本物が動く
+- `MOCK=0`: 翻訳が PLaMo 3 Translate になる（GPU 必須）。説明・要約は `GEMINI_API_KEY` があるときだけ本物（`config.use_llm_mock()`）
+
+## 要約の形式（summarize.py のプロンプト）
+
+```
+[研究背景] [研究目的] [方法] [結果] [考察] [結論]
+- 各項目を箇条書きにして300字以内で出力する
+```
+
+## Gemini の使い方（google-genai。PyPI の README・AI Studio のドキュメントで 2026-11 確認）
+
+- `genai.Client()` は環境変数 `GEMINI_API_KEY` を読む。呼び出しは `client.models.generate_content`（`llm.py`）
+  （新しい interactions API もあるが、Python 3.9 で入る 1.47 には無いので両方にある generate_content を使う）
+- モデルは環境変数 `GEMINI_MODEL`（既定 `gemini-3.5-flash-lite`。Stable。`gemini-2.5-*` は廃止予定）
 
 ## PLaMo 3 Translate の使い方（モデルカードで確認済み）
 
-- `apply_chat_template(messages, source_lang="en", target_lang="ja", glossary=..., context=...)`
+- `apply_chat_template(messages, source_lang="en", target_lang="ja", context=...)`
 - 言語は言語コード（`ja`, `en`, `zh-hans` など全53言語。モデルカードの Supported Languages）
-- `glossary`: `[{"source": "attention", "target": "アテンション"}]`。その段落に出る用語だけ渡す
+- `glossary` 引数（用語集）もあるが、今は使わない（上の方針変更）
 - 前の段落は「履歴」として渡す（`user`=原文, `assistant`=訳）。訳語・文体がそろう。今は直前1段落
 - `context`: 文字列。今は未使用（論文タイトルなどを入れる余地あり）
 - 入力全体＋出力で 32,768 トークン以内
@@ -37,30 +51,30 @@ cloudflared の接続が切れる（約100秒）ため。1回を短くし、訳�
 | メソッド | パス | 入力 | 出力 | 時間の目安 |
 |---|---|---|---|---|
 | GET | `/api/health` | なし | `{status, mock}` | |
-| POST | `/api/prepare` | multipart: `file`（PDF）, `target_lang`（言語コード、既定 `ja`） | `{target_lang, pages[], paragraphs[], glossary[]}` | 数秒 |
-| POST | `/api/translate-paragraph` | JSON: `{text, target_lang, glossary[], history[]}` | `{translation}` | 約10秒 |
-| POST | `/api/summarize` | JSON: `{target_lang, paragraphs[]}`（原文） | `{summary}` | LLM API 次第 |
+| POST | `/api/prepare` | multipart: `file`（PDF）, `target_lang`（言語コード、既定 `ja`） | `{target_lang, pages[], paragraphs[]}` | 数秒 |
+| POST | `/api/translate-paragraph` | JSON: `{text, target_lang, history[]}` | `{translation}` | 約10秒 |
+| POST | `/api/summarize` | JSON: `{target_lang, paragraphs[]}`（原文） | `{summary}`（6項目のテキスト） | LLM API 次第 |
 | POST | `/api/explain` | JSON: `{term, target_lang, contexts[]}` | `{term, explanation}` | LLM API 次第 |
 
 - `pages[]`（prepare の出力）: `{width, height}`（pt）。全ページ分
 - `paragraphs[]`（prepare の出力）: `{id, source, page, bbox}`。`bbox` は `[x0, y0, x1, y1]`（pt、ページ左上が原点）
 - 段落は PyMuPDF のテキストブロック。訳すのは文章のブロックだけ（見出し・表・数式・著者欄・References 以降は含めない）
 - 画面は元の PDF を pdf.js で描き、段落の位置に訳を重ねる（図・表・数式は原文ページのまま残る）
-- `glossary[]`: `{term, translation, paragraph_ids[]}`
 - `history[]`: `{source, translation}`。直前の段落の原文と訳。画面が前の段落の結果を入れて送る
 - 画面の流れ: prepare → summarize を並行で開始 → translate-paragraph を段落順に呼ぶ
-- 用語説明の根拠になる段落の原文は、画面が `paragraph_ids` から集めて `contexts` に入れて送る
-- 用語は複数形（-s / -es）も同じ用語として扱う（`terms.term_pattern`。画面のハイライトも同じ規則）
+- 語の選択: 原文は pdf.js のテキスト層、訳は重ねた訳文で選べる。選ぶとボタンが出る
+- `contexts[]`（explain の入力）: 画面が集める。選んだ位置の段落を先頭に、その語を原文か訳に含む段落を最大3つ。
+  訳があれば「原文: … / 訳: …」の形（`frontend/src/selection.ts` の `buildContexts`）
 
 ## 担当の境界
 
 | ファイル | 担当 | 本番で差し替える関数 |
 |---|---|---|
 | `services/pdf.py` | 寺田 | `extract_layout`（段落の位置・訳す範囲の判定） |
-| `services/terms.py` | 寺田 | 訳語は最初の出現段落を文脈にして翻訳モデルで決める。必要なら `extract_terms` を KeyBERT に |
 | `services/translate.py` | 寺田 | `translate_paragraph`（PLaMo 3 Translate） |
 | `services/explain.py` | 市川 | `explain_term`（LLM API） |
-| `services/summarize.py` | 市川 | `summarize_chunk` / `merge_summaries`（LLM API） |
+| `services/summarize.py` | 市川 | `summarize_paper`（LLM API） |
+| `services/llm.py` | 市川 | `generate`（Gemini 呼び出し） |
 | `frontend/` | 市川 | 全部 |
 
 関数のシグネチャを変えずに中身だけ差し替えれば、相手の作業に影響しない。
@@ -68,7 +82,7 @@ cloudflared の接続が切れる（約100秒）ため。1回を短くし、訳�
 ## 未確認事項（推測で書かない）
 
 - transformers のバージョン（モデルカードに指定なし。config.json の保存時は 4.57.1）
-- Gemini 無料枠の上限とモデル名
+- Gemini 無料枠の上限、既定モデル `gemini-3.5-flash-lite` が無料枠で使えるか（実際のキーで確認する）
 
 ## 実測（2026-11-21, Colab T4, plamo-3-translate-2b, fp16）
 
@@ -79,8 +93,9 @@ cloudflared の接続が切れる（約100秒）ため。1回を短くし、訳�
 
 ## 評価
 
-簡易でよい。1本の論文を用語集・文脈あり／なしで訳し、同じ用語の訳語の揺れを目で見比べる程度。
+簡易でよい。用語集をやめたので、評価の観点は要相談（例: 文脈（直前の段落）あり／なしの訳の比較、
+要約が6項目・各300字以内に収まるか、選んだ語の説明がその論文での意味になっているかを数語で目視）。
 
 ## 対象外
 
-数式・図表・レイアウトの保持。
+図・表・数式・見出しの翻訳（原文ページのまま表示する）。

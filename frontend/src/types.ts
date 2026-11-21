@@ -12,17 +12,10 @@ export interface PageSize {
   height: number
 }
 
-export interface GlossaryEntry {
-  term: string
-  translation: string
-  paragraph_ids: number[] // 用語が出現する段落の id（用語説明の根拠に使う）
-}
-
 export interface PrepareResponse {
   target_lang: string
   pages: PageSize[] // 全ページ（訳す段落がないページも含む）
   paragraphs: SourceParagraph[]
-  glossary: GlossaryEntry[]
 }
 
 export interface HistoryPair {
@@ -33,7 +26,6 @@ export interface HistoryPair {
 export interface TranslateParagraphRequest {
   text: string
   target_lang: string
-  glossary: GlossaryEntry[]
   history?: HistoryPair[] // 直前の段落の原文と訳（訳語・文体をそろえるため）
 }
 
@@ -47,13 +39,13 @@ export interface SummarizeRequest {
 }
 
 export interface SummarizeResponse {
-  summary: string
+  summary: string // [研究背景]〜[結論] の6項目。各項目は「- 」の箇条書き
 }
 
 export interface ExplainRequest {
   term: string
   target_lang: string
-  contexts: string[] // 用語が出現する段落の原文
+  contexts: string[] // 選んだ語が出てくる段落（原文。訳があれば添える）
 }
 
 export interface ExplainResponse {

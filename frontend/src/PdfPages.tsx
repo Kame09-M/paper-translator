@@ -1,57 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from 'pdfjs-dist'
+import { getDocument, GlobalWorkerOptions, TextLayer, type PDFDocumentProxy } from 'pdfjs-dist'
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
-import type { GlossaryEntry, PageSize, SourceParagraph } from './types'
+import { paragraphAt } from './selection'
+import type { PageSize, SourceParagraph } from './types'
 
 GlobalWorkerOptions.workerSrc = workerUrl
 
 const GAP = 16 // 左右のページの間（px）
-
-function escapeRegExp(s: string) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-/** 訳文中の訳語をクリック可能にする（日本語なので単語境界は見ない。長い訳語を優先） */
-function TranslationText({
-  text,
-  glossary,
-  onTermClick,
-}: {
-  text: string
-  glossary: GlossaryEntry[]
-  onTermClick: (g: GlossaryEntry) => void
-}) {
-  const entries = glossary.filter((g) => g.translation.length >= 2)
-  if (entries.length === 0) return <>{text}</>
-  const byTranslation = new Map(entries.map((g) => [g.translation, g]))
-  const alternatives = [...byTranslation.keys()]
-    .sort((a, b) => b.length - a.length)
-    .map(escapeRegExp)
-    .join('|')
-  const parts = text.split(new RegExp(`(${alternatives})`))
-  return (
-    <>
-      {parts.map((part, i) => {
-        const g = i % 2 === 1 ? byTranslation.get(part) : undefined
-        return g ? (
-          <button
-            key={i}
-            className="term"
-            title={g.term}
-            onClick={(e) => {
-              e.stopPropagation()
-              onTermClick(g)
-            }}
-          >
-            {part}
-          </button>
-        ) : (
-          <span key={i}>{part}</span>
-        )
-      })}
-    </>
-  )
-}
 
 /** 枠からはみ出さない大きさまで文字を小さくする */
 function FittedBlock({ maxFontPx, children }: { maxFontPx: number; children: React.ReactNode }) {
@@ -80,10 +35,8 @@ function PageRow({
   width,
   paragraphs,
   translations,
-  glossary,
   hovered,
   onHover,
-  onTermClick,
 }: {
   pdf: PDFDocumentProxy
   pageNo: number
@@ -91,24 +44,35 @@ function PageRow({
   width: number
   paragraphs: SourceParagraph[]
   translations: (string | null)[]
-  glossary: GlossaryEntry[]
   hovered: number | null
   onHover: (id: number | null) => void
-  onTermClick: (g: GlossaryEntry) => void
 }) {
   const originalRef = useRef<HTMLCanvasElement>(null)
   const translatedRef = useRef<HTMLCanvasElement>(null)
+  const textLayerRef = useRef<HTMLDivElement>(null)
   const scale = width / size.width
   const height = size.height * scale
 
   useEffect(() => {
     let cancelled = false
     let task: { cancel: () => void; promise: Promise<void> } | null = null
+    let textLayer: TextLayer | null = null
     ;(async () => {
       const page = await pdf.getPage(pageNo + 1)
       const original = originalRef.current
       const translated = translatedRef.current
-      if (cancelled || !original || !translated) return
+      const textDiv = textLayerRef.current
+      if (cancelled || !original || !translated || !textDiv) return
+
+      // 原文の英語を選択できるよう、透明な文字の層を重ねる
+      textDiv.replaceChildren()
+      textLayer = new TextLayer({
+        textContentSource: page.streamTextContent(),
+        container: textDiv,
+        viewport: page.getViewport({ scale }),
+      })
+      textLayer.render().catch(() => {}) // 描き直しで中断されたときは無視
+
       const ratio = window.devicePixelRatio || 1
       const viewport = page.getViewport({ scale: scale * ratio })
       for (const c of [original, translated]) {
@@ -127,6 +91,7 @@ function PageRow({
     return () => {
       cancelled = true
       task?.cancel()
+      textLayer?.cancel()
     }
   }, [pdf, pageNo, scale])
 
@@ -141,37 +106,55 @@ function PageRow({
     }
   }
 
+  // 枠の div はテキスト選択の邪魔をしないので、マウスの位置から段落を引く
+  const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    onHover(paragraphAt(paragraphs, (e.clientX - rect.left) / scale, (e.clientY - rect.top) / scale))
+  }
+
   return (
     <div className="page-row" style={{ gap: GAP }}>
-      <div className="page" style={{ width, height }}>
+      <div
+        className="page"
+        style={{ width, height }}
+        data-page={pageNo}
+        data-scale={scale}
+        onMouseMove={onMouseMove}
+        onMouseLeave={() => onHover(null)}
+      >
         <canvas ref={originalRef} style={{ width, height }} />
         {paragraphs.map((p) => (
           <div
             key={p.id}
             className={`block source-block${hovered === p.id ? ' hovered' : ''}`}
             style={box(p)}
-            onMouseEnter={() => onHover(p.id)}
-            onMouseLeave={() => onHover(null)}
           />
         ))}
+        <div
+          ref={textLayerRef}
+          className="textLayer"
+          style={{ '--total-scale-factor': scale } as React.CSSProperties}
+        />
       </div>
-      <div className="page" style={{ width, height }}>
+      <div
+        className="page"
+        style={{ width, height }}
+        data-page={pageNo}
+        data-scale={scale}
+        onMouseMove={onMouseMove}
+        onMouseLeave={() => onHover(null)}
+      >
         <canvas ref={translatedRef} style={{ width, height }} />
         {paragraphs.map((p) => {
           const t = translations[p.id]
           return (
             <div
               key={p.id}
+              data-paragraph={p.id}
               className={`block ${t ? 'translated-block' : 'pending-block'}${hovered === p.id ? ' hovered' : ''}`}
               style={box(p)}
-              onMouseEnter={() => onHover(p.id)}
-              onMouseLeave={() => onHover(null)}
             >
-              {t && (
-                <FittedBlock maxFontPx={10 * scale}>
-                  <TranslationText text={t} glossary={glossary} onTermClick={onTermClick} />
-                </FittedBlock>
-              )}
+              {t && <FittedBlock maxFontPx={10 * scale}>{t}</FittedBlock>}
             </div>
           )
         })}
@@ -186,15 +169,11 @@ export default function PdfPages({
   pages,
   paragraphs,
   translations,
-  glossary,
-  onTermClick,
 }: {
   file: File
   pages: PageSize[]
   paragraphs: SourceParagraph[]
   translations: (string | null)[]
-  glossary: GlossaryEntry[]
-  onTermClick: (g: GlossaryEntry) => void
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null)
@@ -250,10 +229,8 @@ export default function PdfPages({
             width={width}
             paragraphs={paragraphs.filter((p) => p.page === i)}
             translations={translations}
-            glossary={glossary}
             hovered={hovered}
             onHover={setHovered}
-            onTermClick={onTermClick}
           />
         ))}
     </div>

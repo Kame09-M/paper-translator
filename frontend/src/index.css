@@ -4,7 +4,6 @@
   --muted: #656d76;
   --border: #d0d7de;
   --accent: #0969da;
-  --term-bg: #fff8c5;
   --error: #cf222e;
   font-family: system-ui, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
   line-height: 1.7;
@@ -19,7 +18,6 @@
     --muted: #8d96a0;
     --border: #30363d;
     --accent: #4493f8;
-    --term-bg: #3b2e00;
     --error: #f85149;
   }
 }
@@ -74,8 +72,65 @@ body {
   font-weight: bold;
 }
 
-.summary p {
+.summary-text {
   margin: 8px 0 0;
+  white-space: pre-wrap;
+}
+
+/* 選択した語の近くに出す「説明」ボタン（画面に固定） */
+.explain-button {
+  position: fixed;
+  z-index: 10;
+  padding: 4px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.85em;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+}
+
+/* pdf.js のテキスト層（原文の英語を選択できるようにする透明な文字）。pdf_viewer.css の必要な部分だけ */
+.textLayer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  line-height: 1;
+  transform-origin: 0 0;
+  z-index: 2;
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+
+.textLayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+
+.textLayer > :not(.markedContent),
+.textLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+
+.textLayer .markedContent {
+  display: contents;
+}
+
+.textLayer ::selection {
+  background: rgb(9 105 218 / 0.3);
 }
 
 .hint {
@@ -104,6 +159,7 @@ body {
 .block {
   position: absolute;
   border-radius: 2px;
+  pointer-events: none;
 }
 
 .block.hovered {
@@ -112,6 +168,7 @@ body {
 }
 
 .translated-block {
+  pointer-events: auto; /* 訳文は選択できるようにする */
   background: #fff;
   color: #1f2328;
   overflow: hidden;
@@ -134,25 +191,7 @@ body {
   font-family: 'Hiragino Mincho ProN', 'Noto Serif JP', serif;
 }
 
-.page .term {
-  background: #fff8c5;
-  color: inherit;
-  padding: 0;
-}
 
-.term {
-  background: var(--term-bg);
-  border: none;
-  padding: 0 2px;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  border-radius: 3px;
-}
-
-.term:hover {
-  outline: 1px solid var(--accent);
-}
 
 .term-panel {
   position: fixed;
@@ -168,10 +207,6 @@ body {
 
 .term-panel h3 {
   margin: 0 0 4px;
-}
-
-.term-translation {
-  color: var(--muted);
 }
 
 .close {

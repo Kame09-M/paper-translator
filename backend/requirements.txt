@@ -2,7 +2,7 @@ fastapi>=0.110,<1
 uvicorn[standard]>=0.29
 python-multipart>=0.0.9
 pymupdf>=1.24
+google-genai>=1.0  # 要約・用語説明（Gemini）。キー未設定ならダミーで動く
 # 本番（MOCK=0）で必要。バージョンはモデルカードを確認してから固定する
 # transformers
 # torch
-# google-genai

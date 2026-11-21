@@ -1,9 +1,10 @@
 """API。翻訳は1段落ずつ呼ぶ（論文1本を1回で訳すと十数分かかり、cloudflared の接続が切れるため）。
 
 画面側の流れ:
-1. POST /api/prepare で段落と用語集を受け取る
-2. POST /api/summarize を並行して呼ぶ
+1. POST /api/prepare で段落（ページ番号・位置つき）を受け取る
+2. POST /api/summarize を並行して呼ぶ（[研究背景]〜[結論] の要約）
 3. POST /api/translate-paragraph を段落ごとに順に呼ぶ（直前の段落の原文と訳を history に入れる）
+4. 読み手が語を選んだら POST /api/explain で、その論文での意味を説明する
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ from app.schemas import (
     TranslateParagraphRequest,
     TranslateParagraphResponse,
 )
-from app.services import explain, pdf, summarize, terms, translate
+from app.services import explain, pdf, summarize, translate
 
 app = FastAPI(title="paper-translator")
 
@@ -54,7 +55,6 @@ async def prepare(file: UploadFile = File(...), target_lang: str = Form("ja")) -
             SourceParagraph(id=i, source=p.text, page=p.page, bbox=list(p.bbox))
             for i, p in enumerate(paragraphs)
         ],
-        glossary=terms.build_glossary([p.text for p in paragraphs], target_lang),
     )
 
 
@@ -63,7 +63,6 @@ def translate_paragraph(req: TranslateParagraphRequest) -> TranslateParagraphRes
     text = translate.translate_paragraph(
         req.text,
         req.target_lang,
-        req.glossary,
         history=[(h.source, h.translation) for h in req.history],
     )
     return TranslateParagraphResponse(translation=text)
