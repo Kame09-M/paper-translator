@@ -1,9 +1,8 @@
 // API の型。変更するときは backend/app/schemas.py も必ず同時に直す。
 
-export interface Paragraph {
+export interface SourceParagraph {
   id: number
   source: string
-  translation: string
 }
 
 export interface GlossaryEntry {
@@ -12,10 +11,34 @@ export interface GlossaryEntry {
   paragraph_ids: number[] // 用語が出現する段落の id（用語説明の根拠に使う）
 }
 
-export interface TranslateResponse {
+export interface PrepareResponse {
   target_lang: string
-  paragraphs: Paragraph[]
+  paragraphs: SourceParagraph[]
   glossary: GlossaryEntry[]
+}
+
+export interface HistoryPair {
+  source: string
+  translation: string
+}
+
+export interface TranslateParagraphRequest {
+  text: string
+  target_lang: string
+  glossary: GlossaryEntry[]
+  history?: HistoryPair[] // 直前の段落の原文と訳（訳語・文体をそろえるため）
+}
+
+export interface TranslateParagraphResponse {
+  translation: string
+}
+
+export interface SummarizeRequest {
+  target_lang: string
+  paragraphs: string[] // 原文の段落
+}
+
+export interface SummarizeResponse {
   summary: string
 }
 

@@ -134,3 +134,7 @@ body {
   cursor: pointer;
   color: var(--muted);
 }
+
+.pending {
+  color: var(--muted);
+}

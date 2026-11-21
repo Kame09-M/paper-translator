@@ -43,9 +43,34 @@ def test_extract_terms_counts_and_filters_stopwords():
     assert "this" not in found
 
 
-def test_find_occurrences_is_word_bounded():
-    paras = ["attention here", "no match", "self-attention counts", "attentions do not"]
-    assert terms.find_occurrences("attention", paras) == [0, 2]
+def test_find_occurrences_is_word_bounded_and_matches_plural():
+    paras = ["attention here", "no match", "self-attention counts", "attentions too", "attentive"]
+    assert terms.find_occurrences("attention", paras) == [0, 2, 3]
+
+
+def test_extract_terms_merges_plurals_and_skips_generic_words():
+    paras = [
+        "The encoder layer maps the input to the output.",
+        "Each layer has two layers inside. The encoder output is different.",
+    ]
+    found = terms.extract_terms(paras)
+    assert "layer" in found and "layers" not in found
+    assert "encoder" in found
+    for generic in ("input", "output", "different"):
+        assert generic not in found
+
+
+def test_build_glossary_drops_terms_left_untranslated(monkeypatch):
+    def fake(terms_, target_lang, contexts):
+        assert contexts["encoder"].startswith("The encoder")  # 最初の出現段落を文脈に渡す
+        return {"encoder": "エンコーダ", "arxivish": "arxivish"}
+
+    monkeypatch.setattr(terms, "extract_terms", lambda ps: ["encoder", "arxivish"])
+    monkeypatch.setattr(terms, "decide_translations", fake)
+    glossary = terms.build_glossary(["The encoder arxivish.", "encoder again"], "ja")
+    assert [(g.term, g.translation, g.paragraph_ids) for g in glossary] == [
+        ("encoder", "エンコーダ", [0, 1])
+    ]
 
 
 def test_summarize_empty():

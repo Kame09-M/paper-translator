@@ -5,10 +5,9 @@ from __future__ import annotations
 from pydantic import BaseModel
 
 
-class Paragraph(BaseModel):
+class SourceParagraph(BaseModel):
     id: int
     source: str
-    translation: str
 
 
 class GlossaryEntry(BaseModel):
@@ -17,10 +16,34 @@ class GlossaryEntry(BaseModel):
     paragraph_ids: list[int]  # 用語が出現する段落の id（用語説明の根拠に使う）
 
 
-class TranslateResponse(BaseModel):
+class PrepareResponse(BaseModel):
     target_lang: str
-    paragraphs: list[Paragraph]
+    paragraphs: list[SourceParagraph]
     glossary: list[GlossaryEntry]
+
+
+class HistoryPair(BaseModel):
+    source: str
+    translation: str
+
+
+class TranslateParagraphRequest(BaseModel):
+    text: str
+    target_lang: str
+    glossary: list[GlossaryEntry]
+    history: list[HistoryPair] = []  # 直前の段落の原文と訳（訳語・文体をそろえるため）
+
+
+class TranslateParagraphResponse(BaseModel):
+    translation: str
+
+
+class SummarizeRequest(BaseModel):
+    target_lang: str
+    paragraphs: list[str]  # 原文の段落
+
+
+class SummarizeResponse(BaseModel):
     summary: str
 
 

@@ -31,22 +31,30 @@ PDF ──pdf.py──▶ 段落リスト
 
 型の正本は `backend/app/schemas.py` と `frontend/src/types.ts`。必ず同時に直す。
 
-| メソッド | パス | 入力 | 出力 |
-|---|---|---|---|
-| GET | `/api/health` | なし | `{status, mock}` |
-| POST | `/api/translate` | multipart: `file`（PDF）, `target_lang`（言語コード、既定 `ja`） | `{target_lang, paragraphs[], glossary[], summary}` |
-| POST | `/api/explain` | JSON: `{term, target_lang, contexts[]}` | `{term, explanation}` |
+翻訳は**1段落ずつ**呼ぶ。論文1本（約100段落）は T4 で約17分かかり、1回の呼び出しでは
+cloudflared の接続が切れる（約100秒）ため。1回を短くし、訳せた段落から画面に出す。
 
-- `paragraphs[]`: `{id, source, translation}`
+| メソッド | パス | 入力 | 出力 | 時間の目安 |
+|---|---|---|---|---|
+| GET | `/api/health` | なし | `{status, mock}` | |
+| POST | `/api/prepare` | multipart: `file`（PDF）, `target_lang`（言語コード、既定 `ja`） | `{target_lang, paragraphs[], glossary[]}` | 数秒 |
+| POST | `/api/translate-paragraph` | JSON: `{text, target_lang, glossary[], history[]}` | `{translation}` | 約10秒 |
+| POST | `/api/summarize` | JSON: `{target_lang, paragraphs[]}`（原文） | `{summary}` | LLM API 次第 |
+| POST | `/api/explain` | JSON: `{term, target_lang, contexts[]}` | `{term, explanation}` | LLM API 次第 |
+
+- `paragraphs[]`（prepare の出力）: `{id, source}`
 - `glossary[]`: `{term, translation, paragraph_ids[]}`
-- 用語説明の根拠になる段落の原文は、フロントが `paragraph_ids` から集めて `contexts` に入れて送る
+- `history[]`: `{source, translation}`。直前の段落の原文と訳。画面が前の段落の結果を入れて送る
+- 画面の流れ: prepare → summarize を並行で開始 → translate-paragraph を段落順に呼ぶ
+- 用語説明の根拠になる段落の原文は、画面が `paragraph_ids` から集めて `contexts` に入れて送る
+- 用語は複数形（-s / -es）も同じ用語として扱う（`terms.term_pattern`。画面のハイライトも同じ規則）
 
 ## 担当の境界
 
 | ファイル | 担当 | 本番で差し替える関数 |
 |---|---|---|
 | `services/pdf.py` | 寺田 | `split_paragraphs`（見出し・参考文献の扱い） |
-| `services/terms.py` | 寺田 | `decide_translations`（訳語の決め方）、必要なら `extract_terms` を KeyBERT に |
+| `services/terms.py` | 寺田 | 訳語は最初の出現段落を文脈にして翻訳モデルで決める。必要なら `extract_terms` を KeyBERT に |
 | `services/translate.py` | 寺田 | `translate_paragraph`（PLaMo 3 Translate） |
 | `services/explain.py` | 市川 | `explain_term`（LLM API） |
 | `services/summarize.py` | 市川 | `summarize_chunk` / `merge_summaries`（LLM API） |

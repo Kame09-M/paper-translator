@@ -12,11 +12,11 @@
 from __future__ import annotations
 
 import os
-import re
 from functools import lru_cache
 
 from app.config import is_mock
 from app.schemas import GlossaryEntry
+from app.services.terms import term_pattern
 
 MODEL_ID = os.environ.get("PLAMO_MODEL", "pfnet/plamo-3-translate-2b")
 MAX_NEW_TOKENS = int(os.environ.get("MAX_NEW_TOKENS", "1024"))
@@ -27,7 +27,7 @@ def _mock_translate(text: str, target_lang: str, glossary: list[GlossaryEntry]) 
     # 用語集の訳語が効いていることが画面で分かるよう、用語だけ置き換える
     out = text
     for g in glossary:
-        out = re.sub(rf"\b{re.escape(g.term)}\b", g.translation, out, flags=re.IGNORECASE)
+        out = term_pattern(g.term).sub(g.translation, out)
     return f"[{target_lang}] {out}"
 
 
@@ -36,7 +36,7 @@ def glossary_for(text: str, glossary: list[GlossaryEntry]) -> list[dict[str, str
     return [
         {"source": g.term, "target": g.translation}
         for g in glossary
-        if re.search(rf"\b{re.escape(g.term)}\b", text, flags=re.IGNORECASE)
+        if term_pattern(g.term).search(text)
     ]
 
 
@@ -55,7 +55,7 @@ def _load():
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    # モデルカードは BF16 対応 GPU を前提にしている。T4 など非対応 GPU での fp16 は未確認
+    # モデルカードは BF16 対応 GPU を前提にしている。T4（BF16 非対応）は fp16 で動作を実測確認済み
     dtype = (
         "bfloat16" if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else "float16"
     )
@@ -71,6 +71,7 @@ def _generate(
     target_lang: str,
     glossary: list[dict[str, str]] | None = None,
     context: str | None = None,
+    max_new_tokens: int = MAX_NEW_TOKENS,
 ) -> str:
     tokenizer, model = _load()
     kwargs = {}
@@ -87,17 +88,19 @@ def _generate(
         return_tensors="pt",
         **kwargs,
     ).to(model.device)
-    output = model.generate(**inputs, do_sample=False, max_new_tokens=MAX_NEW_TOKENS)
+    output = model.generate(**inputs, do_sample=False, max_new_tokens=max_new_tokens)
     return tokenizer.decode(
         output[0, inputs["input_ids"].shape[1] :], skip_special_tokens=True
     ).strip()
 
 
-def translate_text(text: str, target_lang: str) -> str:
-    """用語集・履歴なしで短いテキスト（用語単体など）を訳す。"""
+def translate_text(text: str, target_lang: str, context: str | None = None) -> str:
+    """用語集・履歴なしで短いテキスト（用語単体など）を訳す。context は解釈の参考にする文。"""
     if is_mock():
         return f"〈{text}〉"
-    return _generate([{"role": "user", "content": text}], target_lang)
+    return _generate(
+        [{"role": "user", "content": text}], target_lang, context=context, max_new_tokens=32
+    )
 
 
 def translate_paragraph(

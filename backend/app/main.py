@@ -1,3 +1,11 @@
+"""API。翻訳は1段落ずつ呼ぶ（論文1本を1回で訳すと十数分かかり、cloudflared の接続が切れるため）。
+
+画面側の流れ:
+1. POST /api/prepare で段落と用語集を受け取る
+2. POST /api/summarize を並行して呼ぶ
+3. POST /api/translate-paragraph を段落ごとに順に呼ぶ（直前の段落の原文と訳を history に入れる）
+"""
+
 from __future__ import annotations
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -8,8 +16,12 @@ from app.schemas import (
     ExplainRequest,
     ExplainResponse,
     HealthResponse,
-    Paragraph,
-    TranslateResponse,
+    PrepareResponse,
+    SourceParagraph,
+    SummarizeRequest,
+    SummarizeResponse,
+    TranslateParagraphRequest,
+    TranslateParagraphResponse,
 )
 from app.services import explain, pdf, summarize, terms, translate
 
@@ -24,10 +36,8 @@ def health() -> HealthResponse:
     return HealthResponse(status="ok", mock=is_mock())
 
 
-@app.post("/api/translate", response_model=TranslateResponse)
-async def translate_pdf(
-    file: UploadFile = File(...), target_lang: str = Form("ja")
-) -> TranslateResponse:
+@app.post("/api/prepare", response_model=PrepareResponse)
+async def prepare(file: UploadFile = File(...), target_lang: str = Form("ja")) -> PrepareResponse:
     data = await file.read()
     try:
         paragraphs = pdf.extract_paragraphs(data)
@@ -36,18 +46,27 @@ async def translate_pdf(
     if not paragraphs:
         raise HTTPException(status_code=400, detail="PDF から本文を抽出できませんでした")
 
-    glossary = terms.build_glossary(paragraphs, target_lang)
-    translations = translate.translate_paragraphs(paragraphs, target_lang, glossary)
-    summary = summarize.summarize_paper(paragraphs, target_lang)
-    return TranslateResponse(
+    return PrepareResponse(
         target_lang=target_lang,
-        paragraphs=[
-            Paragraph(id=i, source=s, translation=t)
-            for i, (s, t) in enumerate(zip(paragraphs, translations))
-        ],
-        glossary=glossary,
-        summary=summary,
+        paragraphs=[SourceParagraph(id=i, source=s) for i, s in enumerate(paragraphs)],
+        glossary=terms.build_glossary(paragraphs, target_lang),
     )
+
+
+@app.post("/api/translate-paragraph", response_model=TranslateParagraphResponse)
+def translate_paragraph(req: TranslateParagraphRequest) -> TranslateParagraphResponse:
+    text = translate.translate_paragraph(
+        req.text,
+        req.target_lang,
+        req.glossary,
+        history=[(h.source, h.translation) for h in req.history],
+    )
+    return TranslateParagraphResponse(translation=text)
+
+
+@app.post("/api/summarize", response_model=SummarizeResponse)
+def summarize_paper(req: SummarizeRequest) -> SummarizeResponse:
+    return SummarizeResponse(summary=summarize.summarize_paper(req.paragraphs, req.target_lang))
 
 
 @app.post("/api/explain", response_model=ExplainResponse)
