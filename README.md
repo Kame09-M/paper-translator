@@ -9,6 +9,13 @@
 
 > 開発中です。
 
+## デモ動画・発表スライド
+
+- デモ動画（スクリーンキャスト、約111MB）: [paper_translator_demo.webm](https://github.com/Kame09-M/paper-translator/releases/download/demo-2026-11-22/paper_translator_demo.webm)
+- 発表スライド: [docs/presentation/paper_translator_slides.pptx](docs/presentation/paper_translator_slides.pptx)
+
+動画は GitHub の 100MB 制限を超えるため、[リリース](https://github.com/Kame09-M/paper-translator/releases/tag/demo-2026-11-22)に添付しています。
+
 ## 動かし方（ローカル・MOCK）
 
 GPU も API キーもなしで、ダミー翻訳で画面まで動きます。
