@@ -28,7 +28,21 @@ PDF ──pdf.py──▶ 段落リスト（ページ番号・位置つき）
 
 - `genai.Client()` は環境変数 `GEMINI_API_KEY` を読む。呼び出しは `client.models.generate_content`（`llm.py`）
   （新しい interactions API もあるが、Python 3.9 で入る 1.47 には無いので両方にある generate_content を使う）
-- モデルは環境変数 `GEMINI_MODEL`（既定 `gemini-3.5-flash-lite`。Stable。`gemini-2.5-*` は廃止予定）
+- モデルは環境変数 `GEMINI_MODEL`（既定 `gemini-3.5-flash-lite`。Stable）。`gemini-2.5-flash` と `gemini-2.5-pro` は廃止予定で、
+  2026-12-01 からそれぞれ `gemini-3.5-flash-lite`、`gemini-3.8-flash` に自動で振り替えられる（`gemini-2.5-flash-lite` は廃止予定なし）
+
+## Gemini の無料枠（公式ドキュメントの pricing・rate-limits・models で 2026-11-22 確認）
+
+- `gemini-3.5-flash-lite` は**無料枠で使える**（入力・出力とも Free of charge）。有料枠は 1M トークンあたり入力 $0.30、出力 $2.50
+- **無料枠では、送った内容が Google の製品改善に使われる**（Used to improve our products: 無料 Yes / 有料 No）。
+  公開済みの論文なら問題になりにくいが、未発表の原稿を入れるときは注意
+- 回数の上限（RPM・TPM・RPD）の**具体的な数字は公式ドキュメントに載っていない**。
+  「usage tier などで変わり、Google AI Studio で確認できる」とある。自分のプロジェクトの値は AI Studio の rate limit の画面で見る
+- 上限は **API キーごとではなくプロジェクトごと**。1日の上限（RPD）は太平洋時間の午前0時（日本時間の17時、夏時間は16時）にリセット
+- 上限を超えると rate limit のエラーになる（公式にはコードの記載なし）。今の `llm.py` は再試行しないので、画面に「要約を取得できませんでした」と出る
+- このアプリの呼び出し回数: 要約は論文1本で**1回**（全段落を1回で渡す）、用語説明は語を選ぶたびに1回。
+  1日に数本の論文を読む程度なら回数の上限には届きにくい見込み。ただし要約は論文全体（1〜2万トークン程度）を1回で送るので、
+  1分あたりのトークン数（TPM）の上限が小さいと引っかかる可能性がある（実測していない）
 
 ## PLaMo 3 Translate の使い方（モデルカードで確認済み）
 
@@ -87,7 +101,7 @@ cloudflared の接続が切れる（約100秒）ため。1回を短くし、訳�
 
 ## 未確認事項（推測で書かない）
 
-- Gemini 無料枠の上限、既定モデル `gemini-3.5-flash-lite` が無料枠で使えるか（実際のキーで確認する）
+- Gemini 無料枠の具体的な上限（RPM・TPM・RPD）。公式ドキュメントに数字がなく、AI Studio でプロジェクトごとに確認する
 
 ## transformers のバージョン（2026-11-22）
 
