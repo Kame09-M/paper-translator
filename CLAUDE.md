@@ -23,7 +23,8 @@
   モデルカードに書かれていないことは推測せず、確認する
 - 要約・用語説明は Gemini（llm.py）。GEMINI_API_KEY が無ければダミー
 - 言語は言語コード（ja, en など）で渡す。PLaMo の使い方は docs/DESIGN.md にまとめた（モデルカード確認済み）
-- 未確認事項: transformers のバージョン、Gemini 無料枠の上限と既定モデル（gemini-3.5-flash-lite）が無料枠で使えるか
+- transformers は 5.23.0 に固定（5.24 以降は訳が壊れる。docs/DESIGN.md）
+- 未確認事項: Gemini 無料枠の上限と既定モデル（gemini-3.5-flash-lite）が無料枠で使えるか
 - モデル重み・PDF・.env・APIキーはコミットしない（公開リポジトリ）
 - 担当外のファイルは勝手に変えない。変える必要があれば、理由を説明して止まる
 - ブランチは feat/<名前>-<内容>。小さくコミットし、30〜60分ごとに main へマージする

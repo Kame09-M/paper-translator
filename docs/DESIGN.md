@@ -87,8 +87,15 @@ cloudflared の接続が切れる（約100秒）ため。1回を短くし、訳�
 
 ## 未確認事項（推測で書かない）
 
-- transformers のバージョン（モデルカードに指定なし。config.json の保存時は 4.57.1）
 - Gemini 無料枠の上限、既定モデル `gemini-3.5-flash-lite` が無料枠で使えるか（実際のキーで確認する）
+
+## transformers のバージョン（2026-11-22）
+
+- `transformers==5.23.0` に固定（`requirements-gpu.txt`）。モデルカードに指定はない
+- 5.24.0 では訳が最初の語の繰り返しになる（例: `TransformerTransformer…`、`こんにちは。こんにちは。…`）。
+  5.24 から `generate` がキャッシュを `cache` という名前で渡すが、PLaMo の `prepare_inputs_for_generation`
+  は `past_key_values` で受け取るため、毎ステップでキャッシュが空になり、直前の1トークンしか見えない
+- 上げるときは、PLaMo 側（`modeling_plamo.py`）が `cache` に対応したことを確かめてから
 
 ## 実測（2026-11-21, Colab T4, plamo-3-translate-2b, fp16）
 

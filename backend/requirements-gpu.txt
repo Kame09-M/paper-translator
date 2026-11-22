@@ -1,8 +1,11 @@
 # Colab(GPU) で本物の翻訳を動かすときに追加で入れる（torch は Colab に入っている）
 # モデルカード（pfnet/plamo-3-translate-*）の指定: pip install -U torch transformers accelerate numba
 # バージョン指定はモデルカードに無い。config.json の保存時 transformers は 4.57.1
+# 5.24.0 以降は不可: generate がキャッシュを `cache` という名前で渡すようになり、PLaMo の
+# prepare_inputs_for_generation（`past_key_values` で受け取る）がキャッシュを取りこぼす。
+# 毎ステップ直前の1トークンしか見えず、最初の語を繰り返す（2026-11-22, Colab T4 で発生）
 -r requirements.txt
-transformers
+transformers==5.23.0
 accelerate
 numba
 # Colab で画面（frontend）をビルドする Node.js。pdf.js が Node 22.13 以上を要求する

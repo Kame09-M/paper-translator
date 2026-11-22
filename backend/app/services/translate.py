@@ -29,11 +29,34 @@ def build_messages(text: str, history: list[tuple[str, str]]) -> list[dict[str, 
     return messages
 
 
+def pass_cache_as_past_key_values(model) -> None:
+    """transformers 5.24 以降でもキャッシュが PLaMo に届くようにする。
+
+    5.24 から generate はキャッシュを `cache` という名前で prepare_inputs_for_generation に渡すが、
+    PLaMo（modeling_plamo.py）は `past_key_values` で受け取る。そのままでは毎ステップで
+    キャッシュが空になり、直前の1トークンしか見えずに最初の語を繰り返す。
+    `cache` を `past_key_values` に渡し直す。
+    5.23 以前は `cache` が来ないので何もしない。
+    """
+    original = model.prepare_inputs_for_generation
+
+    def prepare(input_ids, past_key_values=None, **kwargs):
+        cache = kwargs.pop("cache", None)
+        if past_key_values is None:
+            past_key_values = cache
+        return original(input_ids, past_key_values=past_key_values, **kwargs)
+
+    model.prepare_inputs_for_generation = prepare
+
+
 @lru_cache(maxsize=1)
 def _load():
     """モデルを1回だけ読み込む。GPU 環境（Colab）でのみ呼ばれる。"""
     import torch
+    import transformers
     from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    print(f"transformers {transformers.__version__} / model {MODEL_ID}")  # 不具合の切り分け用
 
     # モデルカードは BF16 対応 GPU を前提にしている。T4（BF16 非対応）は fp16 で動作を実測確認済み
     dtype = (
@@ -43,6 +66,7 @@ def _load():
     model = AutoModelForCausalLM.from_pretrained(
         MODEL_ID, trust_remote_code=True, dtype=dtype, device_map="auto"
     )
+    pass_cache_as_past_key_values(model)
     return tokenizer, model
 
 

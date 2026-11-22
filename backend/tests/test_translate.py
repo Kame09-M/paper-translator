@@ -63,3 +63,31 @@ def test_translate_paragraphs_passes_history_without_glossary(monkeypatch):
         {"role": "assistant", "content": "訳1"},
         {"role": "user", "content": "The encoder uses attention."},
     ]
+
+
+class FakeGenModel:
+    """prepare_inputs_for_generation が受け取った past_key_values を記録する。"""
+
+    def __init__(self):
+        self.received = []
+
+    def prepare_inputs_for_generation(self, input_ids, past_key_values=None, **kwargs):
+        self.received.append((past_key_values, kwargs))
+        return {"input_ids": input_ids, "past_key_values": past_key_values}
+
+
+def test_cache_kwarg_is_passed_as_past_key_values():
+    # transformers 5.24 以降: キャッシュが `cache` で来ても PLaMo の past_key_values に届く
+    model = FakeGenModel()
+    translate.pass_cache_as_past_key_values(model)
+    out = model.prepare_inputs_for_generation("ids", cache="CACHE", next_sequence_length=1)
+    assert out["past_key_values"] == "CACHE"
+    assert model.received == [("CACHE", {"next_sequence_length": 1})]
+
+
+def test_past_key_values_kwarg_still_works():
+    # transformers 5.23 以前: これまで通り past_key_values で来る
+    model = FakeGenModel()
+    translate.pass_cache_as_past_key_values(model)
+    out = model.prepare_inputs_for_generation("ids", past_key_values="PKV")
+    assert out["past_key_values"] == "PKV"
