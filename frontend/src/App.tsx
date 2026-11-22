@@ -132,7 +132,7 @@ export default function App() {
   const [error, setError] = useState('')
 
   const [tab, setTab] = useState<Tab>('full')
-  const [view, setView] = useState<'parallel' | 'pdf'>('parallel')
+  const [view, setView] = useState<'parallel' | 'pdf'>('pdf')
 
   // 選択中の語と「説明」ボタンの位置（画面座標）
   const [selection, setSelection] = useState<{ term: string; at: number | null; x: number; y: number } | null>(null)
@@ -467,7 +467,7 @@ export default function App() {
 
   // ---------- 翻訳結果画面 ----------
   return (
-    <div className="app">
+    <div className="app wide">
       <header className="topbar">
         <span className="brand">Paper Reader</span>
         {settings}
@@ -530,15 +530,15 @@ export default function App() {
       </section>
 
       <section hidden={tab !== 'full'} className="tab-panel">
-        <div className="reader">
+        <div className={`reader${view === 'pdf' ? ' full' : ''}`}>
           <div className="reader-main">
             <div className="reader-toolbar">
               <div className="segmented" role="group" aria-label="表示">
-                <button className={view === 'parallel' ? 'active' : ''} onClick={() => setView('parallel')}>
-                  対訳
-                </button>
                 <button className={view === 'pdf' ? 'active' : ''} onClick={() => setView('pdf')}>
                   PDF レイアウト
+                </button>
+                <button className={view === 'parallel' ? 'active' : ''} onClick={() => setView('parallel')}>
+                  対訳（テキスト）
                 </button>
               </div>
               {view === 'parallel' && pagesWithText.length > 1 && (

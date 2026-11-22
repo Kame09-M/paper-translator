@@ -43,6 +43,10 @@ body {
   padding: 0 32px 64px;
 }
 
+.app.wide {
+  max-width: 1880px;
+}
+
 .muted {
   color: var(--muted);
 }
@@ -746,6 +750,26 @@ mark.term.active {
   display: none;
 }
 
+/* PDF レイアウト表示: ページが画面を左右半分ずつ使えるよう、説明パネルは列にせず右下に浮かせる */
+.reader.full {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.reader.full .term-panel {
+  position: fixed;
+  top: auto;
+  right: 24px;
+  bottom: 24px;
+  width: min(380px, calc(100vw - 48px));
+  max-height: 60vh;
+  z-index: 50;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.16);
+}
+
+.reader.full .term-panel:not(.open) {
+  display: none;
+}
+
 /* ---------- 用語集タブ ---------- */
 
 .term-list {
@@ -892,9 +916,11 @@ mark.term.active {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .term-panel {
+  .term-panel,
+  .reader.full .term-panel {
     position: fixed;
     top: auto;
+    width: auto;
     left: 0;
     right: 0;
     bottom: 0;
@@ -908,7 +934,12 @@ mark.term.active {
     visibility: hidden;
   }
 
-  .term-panel.open {
+  .reader.full .term-panel:not(.open) {
+    display: block;
+  }
+
+  .term-panel.open,
+  .reader.full .term-panel.open {
     transform: none;
     visibility: visible;
   }
