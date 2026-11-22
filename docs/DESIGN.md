@@ -57,11 +57,17 @@ cloudflared の接続が切れる（約100秒）ため。1回を短くし、訳�
 | メソッド | パス | 入力 | 出力 | 時間の目安 |
 |---|---|---|---|---|
 | GET | `/api/health` | なし | `{status, mock}` | |
+| GET | `/api/fetch-pdf?url=…` | クエリ: `url`（arXiv の論文ページか PDF の URL） | PDF の中身（`application/pdf`、ファイル名はヘッダー `X-Filename`） | 数秒 |
 | POST | `/api/prepare` | multipart: `file`（PDF）, `target_lang`（言語コード、既定 `ja`） | `{target_lang, pages[], paragraphs[]}` | 数秒 |
 | POST | `/api/translate-paragraph` | JSON: `{text, target_lang, history[]}` | `{translation}` | 約10秒 |
 | POST | `/api/summarize` | JSON: `{target_lang, paragraphs[]}`（原文） | `{summary}`（6項目のテキスト） | LLM API 次第 |
 | POST | `/api/explain` | JSON: `{term, target_lang, contexts[]}` | `{term, explanation}` | LLM API 次第 |
 
+- `fetch-pdf`: URL から読むときに使う。ブラウザからは CORS で多くの論文サイトの PDF を直接取れない
+  （2026-11-22 に調べた範囲では arXiv だけが許可）ので、サーバーが代わりに取り、画面はそれを `/api/prepare` に渡す。
+  arXiv の `/abs/…` は `/pdf/…` に直す。Colab のサーバーは公開 URL で誰でも呼べるので、http/https 以外・
+  社内やローカルのアドレス（リダイレクト先も）・PDF 以外・50 MB 超は断る（`services/fetch.py`）。
+  OpenReview（403）や PubMed Central（確認ページが返る）、購読が必要な出版社からは取れない
 - `pages[]`（prepare の出力）: `{width, height}`（pt）。全ページ分
 - `paragraphs[]`（prepare の出力）: `{id, source, page, bbox}`。`bbox` は `[x0, y0, x1, y1]`（pt、ページ左上が原点）
 - 段落は PyMuPDF のテキストブロック。訳すのは文章のブロックだけ（見出し・表・数式・著者欄・References 以降は含めない）
@@ -81,6 +87,7 @@ cloudflared の接続が切れる（約100秒）ため。1回を短くし、訳�
 | `services/explain.py` | 市川 | `explain_term`（LLM API） |
 | `services/summarize.py` | 市川 | `summarize_paper`（LLM API） |
 | `services/llm.py` | 市川 | `generate`（Gemini 呼び出し） |
+| `services/fetch.py` | 市川 | `fetch_pdf`（URL から PDF を取る） |
 | `frontend/` | 市川 | 全部 |
 
 関数のシグネチャを変えずに中身だけ差し替えれば、相手の作業に影響しない。

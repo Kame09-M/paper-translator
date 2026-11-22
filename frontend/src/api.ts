@@ -85,3 +85,20 @@ export function explainTerm(
 ): Promise<ExplainResponse> {
   return postJson(baseUrl, '/api/explain', req, undefined, geminiHeaders(geminiKey))
 }
+
+/** 論文の URL から PDF を取ってくる（サーバーが代わりに取る。ブラウザからは CORS で取れないサイトが多いため） */
+export async function fetchPdf(baseUrl: string, url: string, signal?: AbortSignal): Promise<File> {
+  const res = await fetch(join(baseUrl, `/api/fetch-pdf?url=${encodeURIComponent(url)}`), { signal })
+  if (!res.ok) {
+    let detail = `${res.status} ${res.statusText}`
+    try {
+      const body = await res.json()
+      if (body?.detail) detail = String(body.detail)
+    } catch {
+      // JSON でないエラー応答はそのまま
+    }
+    throw Object.assign(new Error(detail), { status: res.status })
+  }
+  const name = res.headers.get('X-Filename') || 'paper.pdf'
+  return new File([await res.blob()], name, { type: 'application/pdf' })
+}

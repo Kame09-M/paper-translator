@@ -32,6 +32,7 @@ export function highlightTerms(
   pattern: RegExp | null,
   activeTerm: string | null,
   onOpen: (term: string) => void,
+  title = '',
 ): ReactNode {
   if (!pattern) return text
   const parts = text.split(pattern)
@@ -45,7 +46,7 @@ export function highlightTerms(
         className={`term${activeTerm === key ? ' active' : ''}`}
         role="button"
         tabIndex={0}
-        title="クリックで説明を表示"
+        title={title}
         onClick={() => onOpen(key)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
