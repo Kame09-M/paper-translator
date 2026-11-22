@@ -1,25 +1,27 @@
 :root {
   --bg: #ffffff;
+  --surface: #f7f8fa;
   --fg: #1f2328;
   --muted: #656d76;
-  --border: #d0d7de;
-  --accent: #0969da;
-  --error: #cf222e;
-  font-family: system-ui, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  --border: #e1e4e8;
+  --border-strong: #d0d7de;
+  --accent: #0b5cad;
+  --accent-soft: #eaf2fb;
+  --term-bg: #e3eefb;
+  --term-bg-hover: #cfe2f8;
+  --warn: #8a5a00;
+  --warn-bg: #fff8e5;
+  --error: #b42318;
+  --error-bg: #fdecea;
+  --ok: #1a7f37;
+  --radius: 10px;
+  --serif: 'Hiragino Mincho ProN', 'Noto Serif JP', 'Yu Mincho', serif;
+  --source-serif: 'Charter', 'Georgia', 'Times New Roman', serif;
+  font-family: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
   line-height: 1.7;
   color: var(--fg);
   background: var(--bg);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0d1117;
-    --fg: #e6edf3;
-    --muted: #8d96a0;
-    --border: #30363d;
-    --accent: #4493f8;
-    --error: #f85149;
-  }
+  color-scheme: light;
 }
 
 * {
@@ -31,66 +33,764 @@ body {
   background: var(--bg);
 }
 
-.app {
-  max-width: 1800px;
-  margin: 0 auto;
-  padding: 16px;
+[hidden] {
+  display: none !important;
 }
 
-.toolbar,
-.controls {
+.app {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 32px 64px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.error-text {
+  color: var(--error);
+}
+
+/* ---------- 共通の部品 ---------- */
+
+.btn {
+  font: inherit;
+  font-size: 0.95em;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--fg);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--surface);
+}
+
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: #094c8f;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn.wide {
+  width: 100%;
+  padding: 12px;
+  font-size: 1em;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-button {
+  border: none;
+  background: none;
+  font-size: 1.3em;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.icon-button:hover {
+  background: var(--surface);
+}
+
+input,
+select {
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 8px 12px;
+  min-width: 0;
+}
+
+input:focus,
+select:focus,
+button:focus-visible,
+[role='button']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+input:disabled {
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field > span {
+  font-size: 0.9em;
+  font-weight: 600;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+}
+
+.row > input {
+  flex: 1;
+}
+
+.card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.82em;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--fg);
+}
+
+.chip.warn {
+  background: var(--warn-bg);
+  border-color: #f0dca8;
+  color: var(--warn);
+}
+
+.notice {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.92em;
+  margin: 0 0 12px;
+}
+
+.notice.info {
+  background: var(--accent-soft);
+  color: #0a3d73;
+}
+
+.notice.warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.notice.error {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.state-box {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--muted);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+}
+
+.spinner {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  vertical-align: -0.1em;
+  animation: spin 0.8s linear infinite;
+  opacity: 0.7;
+}
+
+.spinner.light {
+  color: #fff;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+
+/* タブ（入力方法・結果の3タブ） */
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.tabs button {
+  font: inherit;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 16px;
+  margin-bottom: -1px;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tabs button:hover {
+  color: var(--fg);
+}
+
+.tabs button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---------- 上部のバー ---------- */
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  position: relative;
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.settings {
+  position: relative;
+}
+
+.settings > summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: 0.9em;
+  color: var(--muted);
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings > summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings[open] > summary {
+  color: var(--fg);
+  background: var(--surface);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.dot.ok {
+  background: var(--ok);
+}
+
+.dot.warn {
+  background: #d4a72c;
+}
+
+.dot.ng {
+  background: var(--error);
+}
+
+.settings-body {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+  width: min(440px, calc(100vw - 32px));
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.08);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-body small {
+  font-size: 0.82em;
+  line-height: 1.5;
+}
+
+/* ---------- 入力画面 ---------- */
+
+.landing {
+  max-width: 640px;
+  margin: 48px auto 0;
+}
+
+.landing h1 {
+  font-size: 2.2em;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.lead {
+  margin: 8px 0 32px;
+  color: var(--muted);
+}
+
+.input-card {
+  padding: 8px 28px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.input-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-pane .notice {
+  margin: 4px 0 0;
+}
+
+.text-input {
+  width: 100%;
+  padding: 12px 14px;
+}
+
+.dropzone {
+  border: 2px dashed var(--border-strong);
+  border-radius: var(--radius);
+  padding: 40px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--surface);
+  word-break: break-all;
+}
+
+.dropzone:hover,
+.dropzone.over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.dropzone.has-file {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--bg);
+}
+
+.dropzone .muted {
+  font-size: 0.88em;
+}
+
+/* ---------- 結果画面の上部 ---------- */
+
+.doc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 16px 0 20px;
+}
+
+.doc-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.doc-title {
+  font-size: 1.5em;
+  margin: 0 0 8px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.meta-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  margin-bottom: 12px;
 }
 
-.toolbar input {
-  margin-left: 6px;
-  width: min(420px, 70vw);
-}
-
-.status {
+.status-pill {
+  font-size: 0.85em;
   color: var(--muted);
-  font-size: 0.9em;
 }
 
-.error {
+.status-pill.done {
+  color: var(--ok);
+}
+
+.status-pill.error {
   color: var(--error);
 }
 
-.summary {
+.progress {
+  margin-top: 10px;
+  height: 3px;
+  max-width: 360px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress > div {
+  height: 100%;
+  background: var(--accent);
+}
+
+.result-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bg);
+}
+
+.tab-panel {
+  padding-top: 24px;
+}
+
+/* ---------- 要約タブ ---------- */
+
+.summary-view {
+  max-width: 1100px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.summary-card {
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px 16px;
+  border-radius: var(--radius);
+  padding: 18px 22px;
+}
+
+.summary-card h3 {
+  margin: 0 0 8px;
+  font-size: 0.95em;
+  color: var(--accent);
+}
+
+.summary-card ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.summary-card li + li {
+  margin-top: 4px;
+}
+
+.summary-raw {
+  white-space: pre-wrap;
+  max-width: 800px;
+}
+
+/* ---------- 全文翻訳タブ ---------- */
+
+.reader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 32px;
+  align-items: start;
+}
+
+.reader-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
   margin-bottom: 16px;
 }
 
-.summary > summary {
-  cursor: pointer;
-  font-weight: bold;
+.reader-toolbar .hint {
+  font-size: 0.85em;
 }
 
-.summary-text {
-  margin: 8px 0 0;
-  white-space: pre-wrap;
+.hint {
+  font-size: 0.9em;
+  margin: 0 0 12px;
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.segmented button {
+  font: inherit;
+  font-size: 0.88em;
+  border: none;
+  background: var(--bg);
+  padding: 6px 14px;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.segmented button + button {
+  border-left: 1px solid var(--border-strong);
+}
+
+.segmented button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.page-jump {
+  font-size: 0.88em;
+  padding: 5px 10px;
+}
+
+/* 対訳表示: 1段落を1行にし、原文と訳の高さをそろえる */
+.parallel-head,
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+}
+
+.parallel-head {
+  position: sticky;
+  top: 45px; /* 結果タブの下 */
+  z-index: 10;
+  background: var(--bg);
+  font-size: 0.8em;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.pair {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  scroll-margin-top: 90px;
+}
+
+.pair:hover {
+  background: linear-gradient(var(--surface), var(--surface)) no-repeat;
+  background-size: 100% 100%;
+}
+
+.cell {
+  margin: 0;
+  padding: 0 8px;
+}
+
+.cell.source {
+  font-family: var(--source-serif);
+  font-size: 1rem;
+  line-height: 1.65;
+  color: #30363d;
+}
+
+.cell.target {
+  font-family: var(--serif);
+  font-size: 1.02rem;
+  line-height: 1.9;
+}
+
+.cell.pending {
+  font-family: inherit;
+  color: var(--muted);
+  font-size: 0.88em;
+}
+
+.page-divider {
+  font-size: 0.78em;
+  color: var(--muted);
+  padding: 20px 0 6px;
+  letter-spacing: 0.05em;
+  scroll-margin-top: 90px;
+}
+
+/* 説明済みの語のハイライト */
+mark.term {
+  background: var(--term-bg);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 1px;
+  cursor: pointer;
+  border-bottom: 1px solid #8fb8e6;
+}
+
+mark.term:hover {
+  background: var(--term-bg-hover);
+}
+
+mark.term.active {
+  background: var(--term-bg-hover);
+  border-bottom-color: var(--accent);
 }
 
 /* 選択した語の近くに出す「説明」ボタン（画面に固定） */
 .explain-button {
   position: fixed;
-  z-index: 10;
-  padding: 4px 10px;
+  z-index: 40;
+  padding: 6px 12px;
   border: 1px solid var(--accent);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--bg);
   color: var(--accent);
   font: inherit;
   font-size: 0.85em;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
 }
+
+.explain-button:hover {
+  background: var(--accent-soft);
+}
+
+/* 用語の説明パネル（PC は右の列に固定） */
+.term-panel {
+  position: sticky;
+  top: 64px;
+  max-height: calc(100vh - 88px);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  background: var(--bg);
+}
+
+.term-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.eyebrow {
+  font-size: 0.75em;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+
+.term-title {
+  margin: 4px 0 12px;
+  font-size: 1.25em;
+  font-family: var(--source-serif);
+  overflow-wrap: anywhere;
+}
+
+.term-body {
+  margin: 0 0 12px;
+}
+
+.term-panel-empty p {
+  font-size: 0.9em;
+  color: var(--muted);
+  margin: 8px 0 0;
+}
+
+.evidence {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  font-size: 0.88em;
+}
+
+.evidence > summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.evidence blockquote {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--border-strong);
+  background: var(--surface);
+  white-space: pre-wrap;
+  font-size: 0.95em;
+}
+
+.drawer-backdrop {
+  display: none;
+}
+
+/* ---------- 用語集タブ ---------- */
+
+.term-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+  max-width: 900px;
+}
+
+.term-list li {
+  padding: 14px 20px;
+}
+
+.term-list li p {
+  margin: 6px 0 0;
+}
+
+.term-list-head {
+  font: inherit;
+  font-family: var(--source-serif);
+  font-size: 1.1em;
+  font-weight: 700;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--fg);
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.term-list-head .muted {
+  font-family: system-ui, sans-serif;
+  font-size: 0.75em;
+  font-weight: 400;
+}
+
+.term-list-head:hover .muted {
+  color: var(--accent);
+}
+
+/* ---------- PDF レイアウト表示（既存） ---------- */
 
 /* pdf.js のテキスト層（原文の英語を選択できるようにする透明な文字）。pdf_viewer.css の必要な部分だけ */
 .textLayer {
@@ -133,13 +833,6 @@ body {
   background: rgb(9 105 218 / 0.3);
 }
 
-.hint {
-  color: var(--muted);
-  font-size: 0.9em;
-  margin: 0 0 8px;
-}
-
-/* 原文ページ（左）と訳のページ（右）。ページ自体は暗い配色でも白い紙のまま */
 .page-row {
   display: flex;
   margin-bottom: 16px;
@@ -149,7 +842,7 @@ body {
   position: relative;
   flex: none;
   background: #fff;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.2);
 }
 
 .page canvas {
@@ -188,33 +881,97 @@ body {
   overflow: hidden;
   line-height: 1.35;
   text-align: justify;
-  font-family: 'Hiragino Mincho ProN', 'Noto Serif JP', serif;
+  font-family: var(--serif);
 }
 
+/* ---------- レスポンシブ ---------- */
 
+/* 説明パネルは下から出るドロワーにする */
+@media (max-width: 1180px) {
+  .reader {
+    grid-template-columns: minmax(0, 1fr);
+  }
 
-.term-panel {
-  position: fixed;
-  right: 16px;
-  bottom: 16px;
-  width: min(360px, calc(100vw - 32px));
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px 16px;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.15);
+  .term-panel {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: 60vh;
+    z-index: 50;
+    border-radius: 14px 14px 0 0;
+    border-bottom: none;
+    box-shadow: 0 -8px 24px rgb(0 0 0 / 0.12);
+    padding: 16px 20px 24px;
+    transform: translateY(100%);
+    visibility: hidden;
+  }
+
+  .term-panel.open {
+    transform: none;
+    visibility: visible;
+  }
+
+  .drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    background: rgb(0 0 0 / 0.2);
+  }
 }
 
-.term-panel h3 {
-  margin: 0 0 4px;
-}
+/* 狭い画面: 対訳は上下に並べる */
+@media (max-width: 760px) {
+  .app {
+    padding: 0 16px 48px;
+  }
 
-.close {
-  float: right;
-  border: none;
-  background: none;
-  font-size: 1.2em;
-  cursor: pointer;
-  color: var(--muted);
-}
+  .landing {
+    margin-top: 16px;
+  }
 
+  .landing h1 {
+    font-size: 1.7em;
+  }
+
+  .input-card {
+    padding: 4px 16px 20px;
+  }
+
+  .doc-head {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .doc-title {
+    font-size: 1.2em;
+  }
+
+  .parallel-head {
+    display: none;
+  }
+
+  .pair {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .cell {
+    padding: 0;
+  }
+
+  .cell.source {
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+
+  .reader-toolbar .hint {
+    flex-basis: 100%;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
