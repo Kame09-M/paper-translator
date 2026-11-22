@@ -14,7 +14,7 @@
 - backend: `cd backend && python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements-dev.txt && MOCK=1 uvicorn app.main:app --reload --port 8000`
 - Python は 3.9 でも動くように書く（各ファイル先頭に `from __future__ import annotations`）
 - テスト: `cd backend && pytest` / lint: `ruff check .`
-- frontend: `cd frontend && npm install && npm run dev`（APIのURLは画面上部の入力欄）
+- frontend: `cd frontend && npm install && npm run dev`（APIのURLと Gemini キーは画面右上の「接続設定」）
 - コミット前に pytest, ruff check, `npm run build` が通ること
 
 ## 約束
