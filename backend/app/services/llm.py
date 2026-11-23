@@ -5,7 +5,8 @@ google-genai の使い方（PyPI の README・AI Studio のドキュメントで
 - `client.models.generate_content(model, contents, config=GenerateContentConfig(system_instruction,
   max_output_tokens))` → `.text`。新しい interactions API もあるが、Python 3.9 で入る版（1.47）には
   無いので、両方の版にある generate_content を使う
-- モデルは環境変数 GEMINI_MODEL（既定 gemini-3.5-flash-lite。Stable）。無料枠の上限は未確認
+- モデルは環境変数 GEMINI_MODEL（既定 gemini-3.5-flash-lite。Stable、無料枠あり）。
+  上限の数字は公式ドキュメントになく AI Studio で確認する（docs/DESIGN.md）
 """
 
 from __future__ import annotations
