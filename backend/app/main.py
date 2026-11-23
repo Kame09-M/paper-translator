@@ -5,6 +5,9 @@
 2. POST /api/summarize を並行して呼ぶ（[研究背景]〜[結論] の要約）
 3. POST /api/translate-paragraph を段落ごとに順に呼ぶ（直前の段落の原文と訳を history に入れる）
 4. 読み手が語を選んだら POST /api/explain で、その論文での意味を説明する
+
+URL から読むときは、先に GET /api/fetch-pdf で PDF を受け取り、1 の /api/prepare に渡す
+（ブラウザからは CORS で多くの論文サイトの PDF を直接取れないため、サーバーが代わりに取る）
 """
 
 from __future__ import annotations
@@ -13,7 +16,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, Query, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -30,7 +33,7 @@ from app.schemas import (
     TranslateParagraphRequest,
     TranslateParagraphResponse,
 )
-from app.services import explain, pdf, summarize, translate
+from app.services import explain, fetch, pdf, summarize, translate
 
 app = FastAPI(title="paper-translator")
 
@@ -60,6 +63,20 @@ async def prepare(file: UploadFile = File(...), target_lang: str = Form("ja")) -
             SourceParagraph(id=i, source=p.text, page=p.page, bbox=list(p.bbox))
             for i, p in enumerate(paragraphs)
         ],
+    )
+
+
+@app.get("/api/fetch-pdf")
+def fetch_pdf(url: str = Query(..., max_length=2048)) -> Response:
+    """論文の URL（arXiv の論文ページ、または PDF の URL）から PDF を取ってきて、そのまま返す。"""
+    try:
+        data, name = fetch.fetch_pdf(url)
+    except fetch.FetchError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return Response(
+        content=data,
+        media_type="application/pdf",
+        headers={"X-Filename": name, "Access-Control-Expose-Headers": "X-Filename"},
     )
 
 

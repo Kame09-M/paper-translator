@@ -284,6 +284,27 @@ input:disabled {
   letter-spacing: 0.01em;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.segmented.small button {
+  font-size: 0.82em;
+  padding: 5px 10px;
+}
+
+.source-link {
+  font-size: 0.85em;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.source-link:hover {
+  text-decoration: underline;
+}
+
 .settings {
   position: relative;
 }
@@ -361,11 +382,17 @@ input:disabled {
   font-size: 2.2em;
   margin: 0;
   letter-spacing: -0.01em;
+  text-align: center;
 }
 
 .lead {
   margin: 8px 0 32px;
   color: var(--muted);
+  text-align: center;
+}
+
+.tabs.centered {
+  justify-content: center;
 }
 
 .input-card {

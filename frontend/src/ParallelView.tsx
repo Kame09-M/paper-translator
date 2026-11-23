@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import type { Messages } from './i18n'
 import { highlightTerms } from './terms'
 import type { SourceParagraph } from './types'
 
@@ -12,6 +13,7 @@ export default function ParallelView({
   onOpenTerm,
   sourceLabel,
   targetLabel,
+  t,
 }: {
   paragraphs: SourceParagraph[]
   translations: (string | null)[]
@@ -21,6 +23,7 @@ export default function ParallelView({
   onOpenTerm: (term: string) => void
   sourceLabel: string
   targetLabel: string
+  t: Messages
 }) {
   const current = translating ? translations.findIndex((t) => t === null) : -1
   const firstOfPage = useMemo(() => {
@@ -35,30 +38,30 @@ export default function ParallelView({
   return (
     <div className="parallel">
       <div className="parallel-head" aria-hidden>
-        <div>原文（{sourceLabel}）</div>
-        <div>訳文（{targetLabel}）</div>
+        <div>{t.sourceColumn(sourceLabel)}</div>
+        <div>{t.targetColumn(targetLabel)}</div>
       </div>
       {paragraphs.map((p, i) => {
-        const t = translations[p.id]
+        const tr = translations[p.id]
         return (
           <div key={p.id}>
             {firstOfPage[i] && (
               <div className="page-divider" id={`page-${p.page}`}>
-                {p.page + 1} ページ
+                {t.page(p.page + 1)}
               </div>
             )}
             <div className="pair" id={`para-${p.id}`}>
               <p className="cell source" data-paragraph={p.id} lang="en">
-                {highlightTerms(p.source, pattern, activeTerm, onOpenTerm)}
+                {highlightTerms(p.source, pattern, activeTerm, onOpenTerm, t.termTitle)}
               </p>
-              <p className={`cell target${t === null ? ' pending' : ''}`} data-paragraph={p.id}>
-                {t !== null
-                  ? highlightTerms(t, pattern, activeTerm, onOpenTerm)
+              <p className={`cell target${tr === null ? ' pending' : ''}`} data-paragraph={p.id}>
+                {tr !== null
+                  ? highlightTerms(tr, pattern, activeTerm, onOpenTerm, t.termTitle)
                   : p.id === current
-                    ? '翻訳中…'
+                    ? t.cellTranslating
                     : translating
-                      ? '翻訳待ち'
-                      : '未翻訳'}
+                      ? t.cellWaiting
+                      : t.cellNotTranslated}
               </p>
             </div>
           </div>

@@ -1,3 +1,4 @@
+import type { Messages } from './i18n'
 import { isDummySummary } from './terms'
 
 interface Section {
@@ -32,34 +33,35 @@ export default function SummaryView({
   status,
   summary,
   error,
+  t,
 }: {
   status: 'loading' | 'done' | 'error'
   summary: string
   error: string
+  t: Messages
 }) {
   if (status === 'loading') {
     return (
       <div className="state-box">
-        <span className="spinner" aria-hidden />
-        要約を生成しています。翻訳と並行して進むので、「全文翻訳」タブを読みながらお待ちください。
+        <span className="spinner" aria-hidden /> {t.summaryLoading}
       </div>
     )
   }
   if (status === 'error') {
-    return <div className="notice error">要約を取得できませんでした: {error}</div>
+    return <div className="notice error">
+        {t.summaryFailed}
+        {error}
+      </div>
   }
   if (!summary.trim()) {
-    return <div className="state-box">要約は空でした。</div>
+    return <div className="state-box">{t.summaryEmpty}</div>
   }
 
   const sections = parseSummary(summary)
   return (
     <div className="summary-view">
       {isDummySummary(summary) && (
-        <div className="notice warn">
-          これはダミーの要約です（サーバーが MOCK モード、または Gemini API キーが未設定）。
-          本物の要約を出すには「接続設定」で API キーを入力してください。
-        </div>
+        <div className="notice warn">{t.summaryDummy}</div>
       )}
       {sections ? (
         <div className="summary-grid">
